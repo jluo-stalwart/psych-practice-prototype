@@ -165,6 +165,8 @@ a{color:var(--accent-text);text-decoration:none}
 .role-d{display:inline-flex}
 .topbar .link{background:none;border:0;color:var(--accent-text);cursor:pointer;padding:4px 2px;font-size:12px;white-space:nowrap}
 @media (max-width: 900px){.topnav,.role-d,.topbar .link,.brand-text small{display:none}}
+@media (max-width: 900px){.topbar .claude-link:not([hidden]){display:inline-block;order:4} .topbar:has(.claude-link:not([hidden])) .search{flex-basis:0}}
+.connect ol{margin:0;padding-left:20px;display:grid;gap:6px}
 @media (min-width: 901px) and (max-width: 1179px){.brand-text{display:none}.brand{padding:4px}}
 
 /* schedule: mini calendar, the day sheet and the appointment panel */
@@ -796,6 +798,7 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
       <label class="role-m role-d" for="role"><span class="visually-hidden">Signed in as</span>
         <select id="role"><option value="doctor">Dr. Lee, psychiatrist</option><option value="admin">Sam, clinic admin</option></select>
       </label>
+      <button id="claudeBtn" class="link claude-link" type="button" hidden>Connect Claude</button>
       <button id="resetDemo" class="link" type="button">Reset demo</button>
       <label class="mobile-only role-m" for="roleM">As
         <select id="roleM"><option value="doctor">Dr. Lee</option><option value="admin">Admin</option></select>
@@ -2722,8 +2725,75 @@ Psychiatrist`;
   let sampleFn = null, aiCtl = null;
   let sampleState = window.claude && typeof window.claude.use === 'function' ? 'checking' : 'off';
   const aiOff = () => !sampleFn && sampleState !== 'checking';
+  // Outside claude.ai (the public copy, or this page opened as a file) there is no Claude sign-in to use: Anthropic
+  // doesn't let other sites offer one. The viewer connects their own Claude account instead, with an API key from the
+  // Claude Console. The key stays in their browser and goes only to Anthropic, which bills their account for the AI.
+  const canConnect = sampleState === 'off';
+  const aiOffered = () => !!sampleFn || canConnect;
+  const KEY_STORE = 'psych-practice-claude-key';
+  const SDK_URL = 'https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@1.2.0/+esm';
+  let sdk = null;
+  const loadSdk = () => sdk || (sdk = import(SDK_URL).then(m => m.default, e => { sdk = null; throw e; }));
+  // Kept for this tab, or on this device when the viewer ticks Remember.
+  function savedKey() {
+    for (const s of ['sessionStorage', 'localStorage']) { try { const k = window[s].getItem(KEY_STORE); if (k) return k; } catch (e) { /* storage blocked: connect again next time */ } }
+    return '';
+  }
+  function storeKey(key, remember) { forgetKey(); try { (remember ? localStorage : sessionStorage).setItem(KEY_STORE, key); } catch (e) { /* kept until the page closes */ } }
+  function forgetKey() { ['sessionStorage', 'localStorage'].forEach(s => { try { window[s].removeItem(KEY_STORE); } catch (e) { /* nothing stored */ } }); }
+  // What went wrong, in the viewer's words, from an error the Claude SDK threw.
+  const apiMessage = e => String((e && e.error && e.error.error && e.error.error.message) || (e && e.message) || '');
+  const orgBlocksBrowsers = e => /CORS requests are not allowed/i.test(apiMessage(e));
+  function keyProblem(e) {
+    const st = e && e.status, msg = apiMessage(e);
+    if (orgBlocksBrowsers(e)) return 'Your Claude organization doesn’t allow use from a web page (it has zero data retention or the Compliance API turned on). Use a key from another organization.';
+    if (/not scoped to a workspace|anthropic-workspace-id/i.test(msg)) return 'That key isn’t tied to one workspace. In the Console, create a key for a single workspace and paste that one.';
+    if (/credit balance/i.test(msg)) return 'Your Claude Console account is out of credits. Add some under Billing in the Console, then try again.';
+    if (st === 401) return 'Claude didn’t accept that key. Check that you copied all of it and that it hasn’t expired or been turned off.';
+    if (st === 403) return 'That key isn’t allowed to use Claude. Check its workspace and role in the Console.';
+    if (st === 404) return 'That key can’t use Claude Opus 5.5.';
+    if (st === 429) return 'Too many requests right now. Try again in a little while.';
+    if (st) return `Claude answered with an error (${st}). Try again in a little while.`;
+    return 'Couldn’t reach Claude. Check your connection and try again.';
+  }
+  function keySample(key) {
+    const me = async (prompt, opts = {}) => {
+      const fail = (code, text, problem) => Object.assign(new Error(code), { code, text, problem });
+      let Anthropic;
+      try { Anthropic = await loadSdk(); } catch (e) { throw fail('unreachable', '', 'Couldn’t load what talks to Claude. Check your connection and try again.'); }
+      // Claude Opus 5.5 always thinks; high effort suits notes that must stay with what was said. If its safety checks
+      // decline a request, the API carries on with the fallback model Anthropic picks for that kind of decline; any
+      // text already streamed stays, and the fallback continues it.
+      const stream = new Anthropic({ apiKey: key, dangerouslyAllowBrowser: true }).beta.messages.stream({
+        model: 'claude-opus-5-5',
+        max_tokens: 32000,
+        output_config: { effort: 'high' },
+        betas: ['server-side-fallback-2026-07-01'],
+        fallbacks: 'default',
+        messages: [{ role: 'user', content: prompt }],
+      }, { signal: opts.signal });
+      let text = '';
+      stream.on('text', delta => { text += delta; if (opts.onText) opts.onText({ text, delta }); });
+      let message;
+      try { message = await stream.finalMessage(); }
+      catch (e) {
+        if (opts.signal && opts.signal.aborted) throw fail('cancelled', text);
+        // A key Claude no longer takes (expired, turned off) is forgotten, so the next AI button asks to connect again.
+        if (e && e.status === 401 && !orgBlocksBrowsers(e)) { forgetKey(); if (sampleFn === me) { sampleFn = null; sampleState = 'off'; syncClaudeBtn(); } }
+        throw fail(e && e.status === 429 ? 'rate_limited' : 'failed', text, keyProblem(e));
+      }
+      if (message.stop_reason === 'refusal') throw fail('refused');
+      return { text, truncated: message.stop_reason === 'max_tokens' };
+    };
+    return me;
+  }
+  if (canConnect) { const k = savedKey(); if (k) { sampleFn = keySample(k); sampleState = 'ready'; } }
+  // Said under the AI buttons: whose Claude the AI runs on.
+  const aiWhose = () => (!canConnect ? 'It uses your Claude account.' : sampleFn ? 'It runs on the Claude account you connected.' : 'Connect your Claude account to use it, or copy the prompt into a chat at claude.ai.');
   async function runAI(prompt, out, note, buttons, onDone) {
-    if (!sampleFn || aiCtl) return;
+    if (aiCtl) return;
+    // Not connected yet: connect first, then carry on, unless the page has been redrawn meanwhile.
+    if (!sampleFn) { if (canConnect) connectClaude(() => { if (document.contains(out)) runAI(prompt, out, note, buttons, onDone); else render(); }); return; }
     aiCtl = new AbortController();
     out.hidden = false; out.textContent = 'Thinking...'; note.textContent = '';
     buttons.go.disabled = true; buttons.stop.hidden = false;
@@ -2736,7 +2806,7 @@ Psychiatrist`;
       const code = err && err.code;
       if (['not_granted', 'sampling_disabled', 'not_declared', 'capability_disabled', 'capability_removed'].includes(code)) { sampleFn = null; sampleState = 'off'; aiCtl = null; render(); return; }
       out.textContent = (err && err.text) || '';
-      note.textContent = code === 'cancelled' ? 'Stopped.' : code === 'rate_limited' ? 'Too many requests right now. Try again in a little while.' : code === 'session_expired' ? 'Sign in to Claude again, then try again.' : code === 'refused' ? "Claude didn't write this. Try the example instead." : 'Something went wrong reaching Claude. Try again.';
+      note.textContent = code === 'cancelled' ? 'Stopped.' : err && err.problem ? err.problem : code === 'rate_limited' ? 'Too many requests right now. Try again in a little while.' : code === 'session_expired' ? 'Sign in to Claude again, then try again.' : code === 'refused' ? "Claude didn't write this. Try the example instead." : 'Something went wrong reaching Claude. Try again.';
     } finally { aiCtl = null; buttons.go.disabled = false; buttons.stop.hidden = true; }
   }
   // With `change`, the prompt asks the AI to change the note as the psychiatrist asked (the Ask box). The current note
@@ -3542,9 +3612,9 @@ Psychiatrist`;
       const copyBtn = btn('Copy', () => copyText(out.textContent, out), 'small', { hidden: true });
       const shown = intakeAIText(it);
       // A finished run is kept with the intake, and the consult letter takes its history from it.
-      const go2 = btn(shown ? 'Write a new one' : 'Write with AI', () => runAI(aiPrompt(a, ref), out, note, { go: go2, stop }, (text, res) => { copyBtn.hidden = false; if (!res.truncated) { it.ai = { text, at: Date.now() }; persist(); toast('Saved. The consult letter will use this history.'); } }), 'primary small', { hidden: !sampleFn });
+      const go2 = btn(shown ? 'Write a new one' : 'Write with AI', () => runAI(aiPrompt(a, ref), out, note, { go: go2, stop }, (text, res) => { copyBtn.hidden = false; if (!res.truncated) { it.ai = { text, at: Date.now() }; persist(); toast('Saved. The consult letter will use this history.'); } }), 'primary small', { hidden: !aiOffered() });
       const promptBtn = btn('Copy the AI prompt', ev => copyOrShow(aiPrompt(a, ref), ev.currentTarget, 'AI prompt'), 'small', { hidden: !aiOff() });
-      let hint = sampleFn ? 'Uses your Claude account; it asks the first time.' : sampleState === 'checking' ? 'Checking whether AI writing is available here…' : 'AI writing isn’t available in this view. Copy the prompt into a chat at claude.ai to try it.';
+      let hint = canConnect ? aiWhose() : sampleFn ? 'Uses your Claude account; it asks the first time.' : sampleState === 'checking' ? 'Checking whether AI writing is available here…' : 'AI writing isn’t available in this view. Copy the prompt into a chat at claude.ai to try it.';
       if (shown) { out.textContent = shown; copyBtn.hidden = false; hint = (it.ai && it.ai.text ? sentence(`Written by Claude from these answers ${whenIn(it.ai.at)}`) :`Written by Claude from these answers in one AI call (about ${fmtNum(Math.round(aiPrompt(a, ref).length / 4))} tokens in, ${fmtNum(Math.round(shown.length / 4))} out).`) + ' The consult letter uses this history.'; }
       mainP.append(h('div', { class: 'toolbar' }, go2, promptBtn, stop, copyBtn, h('p', { class: 'hint' }, hint)), out, note);
     } else mainP.append(qaList(a));
@@ -3724,11 +3794,11 @@ Psychiatrist`;
       const paras = parseSummary(text, v.transcript.length);
       if (!paras.length) { note.textContent = 'The AI’s answer had no summary to show. Try again.'; return; }
       v.summary = { paras, n: v.transcript.length, at: Date.now() }; persist(); renderKeepScroll = true; render();
-    }), sum ? 'small' : 'primary small', { hidden: !sampleFn || recording });
+    }), sum ? 'small' : 'primary small', { hidden: !aiOffered() || recording });
     const promptBtn = btn('Copy the AI prompt', ev => copyOrShow(summaryPrompt(p, v), ev.currentTarget, 'AI prompt'), 'small', { hidden: !aiOff() || recording });
     const stale = sum && sum.from !== 'example' && sum.n !== n;
     const hint = recording ? 'The summary is written once the recording stops.'
-      : !sum ? (sampleFn ? 'The AI sums up the visit in a few paragraphs and ties each sentence to the lines it came from.' : sampleState === 'checking' ? 'Checking whether AI writing is available here…' : 'AI writing isn’t available in this view. Copy the prompt into a chat at claude.ai to try it.')
+      : !sum ? (aiOffered() ? 'The AI sums up the visit in a few paragraphs and ties each sentence to the lines it came from.' + (canConnect ? ' ' + aiWhose() : '') : sampleState === 'checking' ? 'Checking whether AI writing is available here…' : 'AI writing isn’t available in this view. Copy the prompt into a chat at claude.ai to try it.')
       : (sum.from === 'example' ? 'Written by Claude ahead of time from this demo session.' : sentence(`Written by AI ${whenIn(sum.at)}`)) + (stale ? ` It covers ${sum.n} lines; the transcript now has ${n}.` : ' Pick a line or a sentence to see where it shows up.');
     const status = h('p', { class: 'hint tx-status', 'aria-live': 'polite' });
     // Each sentence is its own span inside the paragraph, so it can be lit up in place.
@@ -3865,14 +3935,14 @@ Psychiatrist`;
     const left = r => (r.dropped ? ` ${r.dropped} ${r.dropped === 1 ? 'sentence' : 'sentences'} the AI couldn't tie to the transcript ${r.dropped === 1 ? 'was' : 'were'} left out.` : '');
     const stop = btn('Stop', () => { if (aiCtl) aiCtl.abort(); }, 'small', { hidden: true });
     const write = () => runAI(notePrompt(p, v), out, note, { go: go2, stop }, text => { const r = parseAINote(text, v.transcript.length); fill(r.note); toast(`Note drafted.${left(r)} Check it before signing.`); });
-    const go2 = btn('Write with AI', write, 'primary small', { hidden: !(sampleFn && hasT) || filled });
+    const go2 = btn('Write with AI', write, 'primary small', { hidden: !(aiOffered() && hasT) || filled });
     const useExample = () => { fill(example); toast('Example note filled in. Check it before signing.'); };
-    const exBtn = btn('Use example note', useExample, sampleFn ? 'small' : 'primary small', { hidden: !example || filled });
+    const exBtn = btn('Use example note', useExample, aiOffered() ? 'small' : 'primary small', { hidden: !example || filled });
     const promptBtn = btn('Copy AI prompt', ev => copyOrShow(notePrompt(p, v), ev.currentTarget, 'AI prompt'), 'small', { hidden: !(hasT && aiOff()) || filled });
     // Once there is a note: copy it, or write it again (which replaces your edits, so it asks first).
     const again = () => openDialog('Write the note again?', h('p', null, 'The AI writes a new note from the transcript. Your edits to this note are replaced.'), [btn('Cancel', closeDialog), btn('Write again', () => { closeDialog(); write(); }, 'primary')]);
     const copyBtn = btn(svgEl('<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>', 'ico'), () => copyText(noteAsText(v)), 'quiet small icon', { title: 'Copy the note', 'aria-label': 'Copy the note', hidden: !filled });
-    const more = filled ? moreMenu([sampleFn && hasT ? ['Write the note again', again] : null, example ? ['Use example note', useExample] : null, hasT ? ['Copy AI prompt', () => copyText(notePrompt(p, v))] : null], svgEl('<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>', 'ico dots'), 'btn-quiet btn-small btn-icon', 'More note actions') : null;
+    const more = filled ? moreMenu([aiOffered() && hasT ? ['Write the note again', again] : null, example ? ['Use example note', useExample] : null, hasT ? ['Copy AI prompt', () => copyText(notePrompt(p, v))] : null], svgEl('<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>', 'ico dots'), 'btn-quiet btn-small btn-icon', 'More note actions') : null;
     // As soon as a recording stops, the note is written, like Heidi; never over a note that already has text.
     if (autoWrite.has(v.id)) {
       autoWrite.delete(v.id);
@@ -3885,7 +3955,7 @@ Psychiatrist`;
     const ask = () => {
       const req = askIn.value.trim(); if (!req) { askIn.focus(); return; }
       const m = noteLines(v).length, prompt = notePrompt(p, v, req);
-      if (!sampleFn) { copyText(prompt); toast('AI writing isn’t available here, so the request was copied as a prompt for a chat at claude.ai.'); return; }
+      if (!aiOffered()) { copyText(prompt); toast('AI writing isn’t available here, so the request was copied as a prompt for a chat at claude.ai.'); return; }
       runAI(prompt, out, note, { go: askGo, stop }, text => {
         const r = parseAINote(text, v.transcript.length + m);
         if (!['mse', 'impression', 'plan', 'summary', 'interp'].some(k => r.note[k])) { toast('The AI’s answer had no note in it, so nothing changed.'); return; }
@@ -3895,7 +3965,7 @@ Psychiatrist`;
     askGo.addEventListener('click', ask);
     askIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); ask(); } });
     const hint = !hasT ? 'Record the visit or paste a transcript first. The note is written as soon as the recording stops.'
-      : sampleFn ? 'The AI writes only what was said in the visit and leaves anything not mentioned blank. It uses your Claude account.' + (example ? ' The example was written ahead of time from this demo session.' : '')
+      : aiOffered() ? 'The AI writes only what was said in the visit and leaves anything not mentioned blank. ' + aiWhose() + (example ? ' The example was written ahead of time from this demo session.' : '')
       : sampleState === 'checking' ? 'Checking whether AI writing is available here…'
       : (example ? 'The example was written by Claude ahead of time from this demo session. ' : '') + 'To try the AI yourself, copy the prompt into a chat at claude.ai.';
     const signBtn = btn('Sign and lock', () => signNote(p, v), 'primary', { disabled: true });
@@ -4040,6 +4110,45 @@ Psychiatrist`;
   }
   function closeDialog() { if ($('overlay').hidden) return; $('overlay').hidden = true; $('dialog').textContent = ''; if (dlgReturn && document.contains(dlgReturn)) dlgReturn.focus(); }
   $('overlay').addEventListener('click', e => { if (e.target === $('overlay')) closeDialog(); });
+
+  // Connecting the viewer's own Claude account outside claude.ai: they sign in to the Claude Console, create an API key
+  // and paste it here. One free request checks the key before it is kept.
+  function connectClaude(then) {
+    const keyIn = h('input', { id: 'claudeKey', type: 'password', autocomplete: 'off', spellcheck: 'false', placeholder: 'sk-ant-api…' });
+    const keep = h('input', { type: 'checkbox' });
+    const err = h('p', { class: 'err', role: 'alert', hidden: true });
+    const say = msg => { err.textContent = msg; err.hidden = !msg; };
+    const go = btn('Connect', async () => {
+      const key = keyIn.value.trim();
+      // Claude sign-in tokens are only for Anthropic's own apps, so only Console API keys are taken.
+      if (/^sk-ant-oat/.test(key)) { say('That’s a Claude sign-in token, which only Anthropic’s own apps may use. Create an API key in the Console instead.'); return; }
+      if (!/^sk-ant-api/.test(key)) { say('Paste an API key from the Claude Console. It starts with sk-ant-api.'); keyIn.focus(); return; }
+      say(''); go.disabled = true; go.textContent = 'Checking…';
+      try { const Anthropic = await loadSdk(); await new Anthropic({ apiKey: key, dangerouslyAllowBrowser: true }).models.retrieve('claude-opus-5-5'); }
+      catch (e) { say(sdk ? keyProblem(e) : 'Couldn’t load what talks to Claude. Check your connection and try again.'); go.disabled = false; go.textContent = 'Connect'; return; }
+      storeKey(key, keep.checked); sampleFn = keySample(key); sampleState = 'ready';
+      closeDialog(); syncClaudeBtn(); toast('Claude connected.');
+      if (then) then(); else render();
+    }, 'primary');
+    keyIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); go.click(); } });
+    openDialog('Connect your Claude account', h('div', { class: 'form connect' },
+      h('p', null, 'The AI buttons run on your own Claude account. Sites outside claude.ai can’t sign you in to Claude, so you connect it with an API key.'),
+      h('ol', null,
+        h('li', null, h('a', { href: 'https://platform.claude.com/settings/keys', target: '_blank', rel: 'noopener noreferrer' }, 'Sign in to the Claude Console'), ' with your Claude account.'),
+        h('li', null, 'Create a key for one workspace, copy it and paste it here.')),
+      field('API key', keyIn),
+      h('label', { class: 'check' }, keep, 'Remember it on this device'),
+      err,
+      h('p', { class: 'hint' }, 'The key stays in this browser and is sent only to Anthropic, which bills your Console account for what the AI writes: roughly 10 to 25 cents a note, separate from any Claude Pro or Max plan. Use made-up details only.')),
+    [btn('Cancel', closeDialog), go]);
+  }
+  function claudeMenu() {
+    if (!sampleFn) { connectClaude(); return; }
+    openDialog('Claude is connected', h('p', null, 'The AI buttons run on the Claude account whose key you connected. Disconnecting stops any AI writing under way and removes the key from this browser.'), [
+      btn('Disconnect', () => { if (aiCtl) aiCtl.abort(); forgetKey(); sampleFn = null; sampleState = 'off'; closeDialog(); syncClaudeBtn(); render(); toast('Claude disconnected.'); }),
+      btn('Done', closeDialog, 'primary')]);
+  }
+  function syncClaudeBtn() { const b = $('claudeBtn'); b.hidden = !canConnect; b.textContent = sampleFn ? 'Claude connected' : 'Connect Claude'; }
 
   function openBooking({ pid, apptId, type, start }) {
     const existing = apptId ? S.appts.find(a => a.id === apptId) : null;
@@ -4474,6 +4583,7 @@ Psychiatrist`;
   $('role').addEventListener('change', e => setRole(e.target.value));
   $('roleM').addEventListener('change', e => setRole(e.target.value));
   $('resetDemo').addEventListener('click', askResetDemo);
+  $('claudeBtn').addEventListener('click', claudeMenu);
   $('homeBtn').addEventListener('click', () => go('home'));
   const search = $('search'), sList = $('searchList');
   const runSearch = () => {
@@ -4507,6 +4617,7 @@ Psychiatrist`;
   S.visits.forEach(v => { if (v.status === 'recording') v.status = v.transcript && v.transcript.length ? 'recorded' : 'scheduled'; });
   S.faxes.forEach(finishFax);
   $('role').value = role; $('roleM').value = role;
+  syncClaudeBtn();
   buildNav();
   window.addEventListener('hashchange', routeFromHash);
   if (window.claude && typeof window.claude.use === 'function') {
