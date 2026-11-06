@@ -134,28 +134,23 @@ a{color:var(--accent-text);text-decoration:none}
 .search li button{width:100%;text-align:left;border:0;background:transparent;padding:8px 10px;border-radius:7px;cursor:pointer;font-size:13px}
 .search li button:hover,.search li button:focus-visible{background:var(--accent);color:#FFFFFF}
 .search li button:hover .muted,.search li button:focus-visible .muted{color:rgba(255,255,255,.8)}
-.mobile-only{display:none}
 .main{--main-pad-b:64px;flex:1 1 auto;min-height:0;overflow-y:auto;padding-block:28px var(--main-pad-b);padding-left:32px;padding-right:max(32px, env(safe-area-inset-right, 0px))}
 .tabbar{display:none}
 @media (max-width: 900px){
   .shell{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto}
   .side{display:none}
-  .topbar{padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));flex-wrap:wrap}
-  .search{flex:1 1 100%;order:3}
+  .topbar{padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
   .main{--main-pad-b:32px;padding-block:20px var(--main-pad-b);padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
-  .mobile-only{display:inline-flex}
   .tabbar{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));background:var(--bar);-webkit-backdrop-filter:saturate(180%) blur(24px);backdrop-filter:saturate(180%) blur(24px);border-top:1px solid var(--line);padding-top:4px;padding-bottom:max(6px, env(safe-area-inset-bottom, 0px));padding-left:max(4px, env(safe-area-inset-left, 0px));padding-right:max(4px, env(safe-area-inset-right, 0px))}
   .tabbar button{position:relative;display:grid;justify-items:center;gap:1px;border:0;background:transparent;color:var(--muted);font-size:11px;font-weight:500;padding:5px 2px 3px;cursor:pointer;letter-spacing:0}
   .tabbar button[aria-current="true"]{color:var(--accent)}
   .tabbar svg{width:25px;height:25px}
   .tabbar .badge,.tabbar .badge.soft{position:absolute;top:0;left:calc(50% + 7px);margin:0;min-width:18px;height:18px;padding:0 5px;font-size:11px;background:var(--red);color:#FFFFFF;font-weight:600}
 }
-.role-m{align-items:center;gap:6px;font-size:12px;color:var(--muted)}
 
-/* top bar with the sections across it, the way clinic schedulers are laid out */
+/* top bar laid out like Jane's: the clinic, the sections in order, and the name menu at the far right */
 .shell{grid-template-columns:minmax(0,1fr)}
 .topnav{display:flex;gap:2px;flex:0 0 auto}
-.topbar > .search{margin-left:auto;min-width:120px}
 .topnav button{display:inline-flex;align-items:center;gap:7px;border:0;background:transparent;color:var(--ink);padding:6px 12px;min-height:32px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500}
 .topnav button:hover{background:var(--fill-3)}
 .topnav button[aria-current="true"]{background:var(--accent-soft);color:var(--accent-text);font-weight:600}
@@ -163,10 +158,15 @@ a{color:var(--accent-text);text-decoration:none}
 .topnav .badge{margin-left:0}
 .topnav .badge.soft{color:var(--muted)}
 .topnav button[aria-current="true"] .badge.soft{color:var(--accent-text)}
-.role-d{display:inline-flex}
-.topbar .link{background:none;border:0;color:var(--accent-text);cursor:pointer;padding:4px 2px;font-size:12px;white-space:nowrap}
-@media (max-width: 900px){.topnav,.role-d,.topbar .link,.brand-text small{display:none}}
-@media (max-width: 900px){.topbar .phone-link:not([hidden]){display:inline-block;order:4} .topbar:has(.phone-link:not([hidden])) .search{flex-basis:0}}
+.acct{margin-left:auto;flex:0 0 auto}
+.acct-btn{display:inline-flex;align-items:center;gap:6px;border:0;background:transparent;color:var(--ink);padding:6px 10px;min-height:32px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;white-space:nowrap}
+.acct-btn:hover,.acct-btn[aria-expanded="true"]{background:var(--fill-3)}
+.acct-btn .chev{width:14px;height:14px}
+.acct-h{margin:4px 10px 3px;font-size:11px;font-weight:600;color:var(--muted)}
+.acct-sep{border:0;border-top:1px solid var(--line);margin:4px 6px}
+.acct-menu button{display:flex;align-items:center;gap:8px}
+.acct-menu [role="menuitemradio"][aria-checked="true"]::after{content:"";margin-left:auto;width:9px;height:5px;border-left:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-2px) rotate(-45deg)}
+@media (max-width: 900px){.topnav,.brand-text small{display:none}}
 /* the testing version's sign-in, shown instead of the clinic until the account signs in */
 html[data-locked] #shell{display:none}
 .signin{min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:24px 16px;background:var(--bg)}
@@ -178,24 +178,21 @@ html[data-locked] #shell{display:none}
 .connect ol{margin:0;padding-left:20px;display:grid;gap:6px}
 @media (min-width: 901px) and (max-width: 1179px){.brand-text{display:none}.brand{padding:4px}}
 
-/* schedule: mini calendar, the day sheet and the appointment panel */
+/* schedule, laid out like Jane's: the toolbar, the sidebar, the day sheet and the panel that slides out on the right */
 .page.wide{max-width:1440px}
+.sched-tools{display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px}
+.sched-title{display:grid;gap:1px;min-width:0}
+.sched-title h1{font-size:19px;font-weight:600;letter-spacing:-.015em;line-height:1.2}
+.date-pick{height:32px;border:0;border-radius:8px;background:var(--btn-bg);box-shadow:0 0 0 .5px var(--btn-ring),0 1px 1.5px rgba(0,0,0,.06);padding:0 10px;font:inherit;font-size:13px;color:var(--ink);color-scheme:light dark}
+.btn-on,.btn-on:hover:not(:disabled){background:var(--accent-soft);color:var(--accent-text);box-shadow:none}
 .sched{display:grid;gap:20px;grid-template-columns:minmax(0,1fr);align-items:start}
 @media (min-width:1000px){.sched{grid-template-columns:240px minmax(0,1fr)}}
 @media (min-width:1180px){.sched.with-panel{grid-template-columns:240px minmax(0,1fr) 320px}}
 .rail-col{min-width:0}
-.mini{padding:14px 12px}
-.mc-head{display:flex;align-items:center;justify-content:space-between;gap:6px;margin:0 2px 8px}
-.mc-head b{font-size:13px}
-.mc-head .btn{min-height:28px;padding:0 9px}
-.mc-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));row-gap:2px;text-align:center}
-.mc-dow{font-size:11px;color:var(--muted);padding:2px 0 4px}
-.mc-day{position:relative;border:0;background:none;width:30px;height:30px;justify-self:center;border-radius:50%;font-size:12px;cursor:pointer;color:var(--ink);font-variant-numeric:tabular-nums;padding:0}
-.mc-day:hover{background:var(--fill-3)}
-.mc-day.has::after{content:"";position:absolute;left:50%;bottom:3px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:var(--faint)}
-.mc-day.today{color:var(--red);font-weight:600}
-.mc-day.sel{background:var(--accent);color:#FFFFFF;font-weight:600}
-.mc-day.sel.has::after{background:#FFFFFF}
+.finder{flex:none;width:100%}
+.staff-row{display:flex;align-items:center;gap:10px;font-size:13px}
+.staff-row small{display:block;font-size:12px;color:var(--muted)}
+.staff-dot{width:10px;height:10px;flex:0 0 auto;border-radius:50%;background:var(--accent)}
 .cal.day{grid-template-columns:54px minmax(0,1fr)}
 .cal-dh small{font-size:11px;color:var(--muted)}
 .cal-day{cursor:pointer}
@@ -234,6 +231,11 @@ html[data-locked] #shell{display:none}
 @media (min-width:1000px){.visits{grid-template-columns:270px minmax(0,1fr)}}
 .session-list{padding:12px;display:grid;gap:8px}
 .session-list > .card-h{margin:2px 4px 2px}
+.day-nav{display:flex;align-items:center;gap:6px}
+.day-when{flex:1 1 auto;min-width:0;display:grid;justify-items:center;text-align:center;line-height:1.25}
+.day-when b{font-size:15px}
+.day-when small{font-size:11px;color:var(--muted)}
+.day-col > .btn{justify-self:start}
 .sl-group{display:grid;gap:2px}
 .sl-group h3{font-size:11px;font-weight:600;color:var(--muted);margin:8px 10px 4px}
 .sl-item{display:grid;gap:1px;width:100%;text-align:left;border:0;background:transparent;padding:8px 10px;border-radius:10px;cursor:pointer;color:inherit;font:inherit;letter-spacing:inherit}
@@ -526,7 +528,19 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
 .mail-meta{margin-top:2px}
 .mail-view{min-width:0}
 
-/* patient file */
+/* patients, laid out like Jane's: the list beside the profile, whose header has the initials, counts and tabs */
+.pts{display:grid;gap:20px;grid-template-columns:minmax(0,1fr);align-items:start}
+@media (min-width:1000px){.pts{grid-template-columns:270px minmax(0,1fr)}}
+@media (min-width:1000px){.pts-col{position:sticky;top:0;max-height:calc(100vh - 110px);overflow:auto}}
+@media (max-width:999px){.pts.has-sel .pts-col{display:none}}
+.pt-pane{min-width:0}
+.phone-back{display:none}
+@media (max-width:999px){.phone-back{display:block}}
+.avatar{width:52px;height:52px;flex:0 0 auto;border-radius:50%;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent-text);font-size:19px;font-weight:600;letter-spacing:.02em}
+.pt-counts{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:1px;margin:0;border-radius:var(--r-lg);overflow:hidden;background:var(--line)}
+.pt-counts > div{background:var(--surface);padding:10px 14px;display:grid;gap:2px}
+.pt-counts dt{font-size:11px;color:var(--muted)}
+.pt-counts dd{margin:0;font-size:17px;font-weight:600;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
 .pt-head{display:grid;gap:14px}
 .pt-top{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center;justify-content:space-between}
 .pt-name{flex:1 1 300px;min-width:0;display:grid;gap:5px}
@@ -803,19 +817,18 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
     <header class="topbar">
       <button class="brand" id="homeBtn" type="button" data-nav="home" title="Home"><span class="brand-mark" aria-hidden="true">Ψ</span><span class="brand-text"><b>Demo Psychiatry Clinic</b><small>Made-up patients · nothing is sent</small></span></button>
       <nav class="topnav" id="nav" aria-label="Sections"></nav>
-      <div class="search" id="searchBox">
-        <input id="search" type="search" placeholder="Search patients" autocomplete="off" aria-label="Search patients">
-        <ul id="searchList" hidden></ul>
+      <div class="more acct">
+        <button id="acctBtn" class="more-btn acct-btn" type="button" aria-haspopup="menu" aria-expanded="false"><span id="acctName">Dr. Lee</span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+        <div id="acctMenu" class="more-list acct-menu" role="menu" hidden>
+          <p class="acct-h">View the clinic as</p>
+          <button type="button" role="menuitemradio" data-role="doctor" aria-checked="true">Dr. Lee, psychiatrist</button>
+          <button type="button" role="menuitemradio" data-role="admin" aria-checked="false">Sam, clinic admin</button>
+          <hr class="acct-sep">
+          <button id="claudeBtn" type="button" role="menuitem" hidden>Connect Claude</button>
+          <button id="resetDemo" type="button" role="menuitem">Reset demo</button>
+          <button id="signOut" type="button" role="menuitem" hidden>Sign out</button>
+        </div>
       </div>
-      <label class="role-m role-d" for="role"><span class="visually-hidden">Signed in as</span>
-        <select id="role"><option value="doctor">Dr. Lee, psychiatrist</option><option value="admin">Sam, clinic admin</option></select>
-      </label>
-      <button id="claudeBtn" class="link phone-link" type="button" hidden>Connect Claude</button>
-      <button id="resetDemo" class="link" type="button">Reset demo</button>
-      <button id="signOut" class="link phone-link" type="button" hidden>Sign out</button>
-      <label class="mobile-only role-m" for="roleM">As
-        <select id="roleM"><option value="doctor">Dr. Lee</option><option value="admin">Admin</option></select>
-      </label>
     </header>
     <main id="main" class="main" tabindex="-1"></main>
   </div>
@@ -2697,7 +2710,7 @@ Psychiatrist`;
   const readRole = () => { try { return localStorage.getItem(KEY + ':role') === 'admin' ? 'admin' : 'doctor'; } catch (e) { return 'doctor'; } };
   let role = readRole();
   const roleName = () => (role === 'doctor' ? 'Dr. Lee' : 'Sam (admin)');
-  const ui = { view: 'home', pid: null, tab: 'profile', visitId: null, letterId: null, inboxTab: 'in', inboxSel: null, day: clinicDay, schedView: 'day', apptSel: null, sessionTab: null, intakeTab: 'ai', taskScope: 'mine', filter: '' };
+  const ui = { view: 'schedule', pid: null, tab: 'profile', visitId: null, letterId: null, inboxTab: 'in', inboxSel: null, day: clinicDay, schedView: 'day', apptSel: null, sessionTab: null, intakeTab: 'ai', taskScope: 'mine', filter: '' };
   const P = id => S.patients.find(p => p.id === id);
   const logEvent = (pid, text, t) => S.events.push({ at: t || Date.now(), pid, text });
 
@@ -3152,9 +3165,11 @@ Psychiatrist`;
   }
 
   /* ---------- shell ---------- */
-  // Laid out the way new staff already know: a home screen for the day at a glance, the front desk of a clinic scheduler (Jane), and visits that record and write the note like an AI scribe (Heidi).
+  // Laid out like Jane, which the clinic already knows (decided 2026-11-06), in our own look: the sections across the
+  // top in Jane's order, the name menu at the top right, and the app opening on the Schedule. Home, the day at a
+  // glance, sits behind the clinic name; the Day tab (view key 'visits') records the visit and writes the note.
   const main = $('main');
-  const NAV = [['schedule', 'Schedule'], ['patients', 'Patients'], ['visits', 'Visits'], ['inbox', 'Inbox'], ['tasks', 'Tasks']];
+  const NAV = [['schedule', 'Schedule'], ['visits', 'Day'], ['patients', 'Patients'], ['inbox', 'Inbox'], ['tasks', 'Tasks']];
   const ICONS = {
     schedule: '<rect x="3.5" y="4.5" width="17" height="16" rx="3.5"/><path d="M3.5 9.5h17M8 3v3M16 3v3M7.5 13.5h2M11 13.5h2M14.5 13.5h2M7.5 17h2M11 17h2"/>',
     patients: '<circle cx="9" cy="8.5" r="3.2"/><path d="M3 19.5c.6-3.3 3-5.2 6-5.2s5.4 1.9 6 5.2M15.5 5.6a3 3 0 0 1 0 5.8M17.6 14.6c1.8.6 3 2.2 3.4 4.9"/>',
@@ -3214,7 +3229,7 @@ Psychiatrist`;
   function routeFromHash() {
     const t = (location.hash || '').slice(1);
     if (/^p-[A-Za-z0-9_-]+$/.test(t) && P(t.slice(2))) { if (ui.view !== 'patient' || ui.pid !== t.slice(2)) Object.assign(ui, { pid: t.slice(2), tab: ui.pid === t.slice(2) ? ui.tab : 'profile', letterId: null }); ui.view = 'patient'; }
-    else ui.view = t === 'today' ? 'schedule' : NAV.some(([k]) => k === t) ? t : 'home';
+    else ui.view = t === 'home' ? 'home' : NAV.some(([k]) => k === t) ? t : 'schedule';
     renderKeepScroll = false; render();
   }
   function pageHead(title, subtitle, actions) {
@@ -3305,12 +3320,15 @@ Psychiatrist`;
   /* ---------- Schedule: the day sheet, a mini calendar and a panel for the chosen appointment ---------- */
   const PX = 1.3, DAY_START = 8, DAY_END = 17;
   const panelFits = () => window.matchMedia('(min-width: 1180px)').matches;
-  function selectAppt(a) { if (panelFits()) { ui.apptSel = a.id; renderKeepScroll = true; render(); } else openAppt(a); }
+  function selectAppt(a) { if (panelFits()) { ui.apptSel = a.id; ui.schedPanel = null; renderKeepScroll = true; render(); } else openAppt(a); }
   const isWeekend = ms => new Date(ms).getDay() % 6 === 0;
   const shiftWorkday = (ms, n) => { const d = new Date(ms); let k = Math.abs(n); while (k > 0) { d.setDate(d.getDate() + Math.sign(n)); if (d.getDay() % 6 !== 0) k--; } return startOfDay(d.getTime()); };
+  // Laid out like Jane's schedule: a toolbar to step through days with a date picker, the views and the wait list; the
+  // patient search and staff down the left; columns for the practitioner; details sliding out on the right.
   VIEWS.schedule = function () {
     const day = startOfDay(ui.day || clinicDay), today = startOfDay(Date.now()), week = ui.schedView === 'week';
     const pg = h('div', { class: 'page wide' });
+    if (trial && !S.patients.length) pg.append(startCard());
     const urgent = S.patients.filter(needsCall);
     if (urgent.length) pg.append(safetyBand(urgent));
     const dayAppts = S.appts.filter(a => startOfDay(a.start) === day && a.status !== 'cancelled');
@@ -3319,21 +3337,65 @@ Psychiatrist`;
     const subtitle = week ? `Week of ${d0.toLocaleDateString('en-CA', { month: 'long', day: 'numeric' })}`
       : [day === today ? longDay(day) : null, isWeekend(day) ? 'Clinic closed' : `${dayAppts.length || 'No'} appointment${dayAppts.length === 1 ? '' : 's'}`].filter(Boolean).join(' · ');
     const move = n => { ui.day = week ? addDays(day, 7 * n) : shiftWorkday(day, n); ui.apptSel = null; render(); };
-    pg.append(pageHead(title, subtitle, [
+    const pick = h('input', { type: 'date', class: 'date-pick', value: ymd(day), 'aria-label': 'Go to a date', title: 'Go to a date' });
+    pick.addEventListener('change', () => { const [y, m, d] = pick.value.split('-').map(Number); if (!y) return; ui.day = new Date(y, m - 1, d).getTime(); ui.apptSel = null; render(); });
+    const waits = S.waitlist.filter(w => P(w.pid)).length, waitOpen = ui.schedPanel === 'wait' && panelFits();
+    pg.append(h('div', { class: 'sched-tools' },
       h('div', { class: 'stepper', role: 'group', 'aria-label': week ? 'Change week' : 'Change day' },
         btn('‹', () => move(-1), null, { 'aria-label': week ? 'Previous week' : 'Previous day' }),
         btn('Today', () => { ui.day = clinicDay; ui.apptSel = null; render(); }),
         btn('›', () => move(1), null, { 'aria-label': week ? 'Next week' : 'Next day' })),
+      pick,
+      h('div', { class: 'sched-title' }, h('h1', null, title), h('p', { class: 'hint' }, subtitle)),
+      h('span', { class: 'spacer' }),
       h('div', { class: 'seg', role: 'group', 'aria-label': 'View' }, [['day', 'Day'], ['week', 'Week']].map(([k, l]) => h('button', { type: 'button', 'aria-pressed': String((week ? 'week' : 'day') === k), onclick: () => { ui.schedView = k; ui.apptSel = null; render(); } }, l))),
-      btn('Book appointment', () => openBooking({}), 'primary')]));
+      btn(['Wait list', waits ? h('span', { class: 'count' }, String(waits)) : null], () => { if (!panelFits()) { openWaitlist(); return; } ui.schedPanel = waitOpen ? null : 'wait'; ui.apptSel = null; render(); }, waitOpen ? 'on' : null, { 'aria-pressed': String(waitOpen) }),
+      btn('Book appointment', () => openBooking({}), 'primary')));
     const sel = ui.apptSel && panelFits() ? S.appts.find(a => a.id === ui.apptSel && a.status !== 'cancelled') : null;
+    const panel = sel ? apptPanel(sel) : waitOpen ? waitPanel() : null;
     const legend = h('div', { class: 'legend' }, Object.entries(TYPES).map(([k, t]) => h('span', null, h('i', { class: 'lg-' + k }), `${t.label}, ${t.mins} min`)), h('span', { class: 'desk-only' }, 'Click an empty time to book it'));
-    pg.append(h('div', { class: 'sched' + (sel ? ' with-panel' : '') },
-      h('div', { class: 'rail-col stack gap-l' }, miniCal(day), workCard(), waitlistCard()),
+    pg.append(h('div', { class: 'sched' + (panel ? ' with-panel' : '') },
+      h('div', { class: 'rail-col stack gap-l' }, patientFinder(), staffCard(), workCard()),
       h('div', { class: 'stack', style: 'min-width:0' }, week ? weekGrid(ws) : dayGrid(day), agendaList(week ? [0, 1, 2, 3, 4].map(i => addDays(ws, i)) : [day]), legend),
-      sel ? apptPanel(sel) : null));
+      panel));
     return pg;
   };
+  // The patient search at the top of the schedule's sidebar, as in Jane.
+  function patientFinder() {
+    const q = h('input', { type: 'search', placeholder: 'Search patients', 'aria-label': 'Search patients', autocomplete: 'off' });
+    const list = h('ul', { hidden: true });
+    const paint = () => {
+      const s = q.value.trim().toLowerCase();
+      list.textContent = '';
+      if (!s) { list.hidden = true; return; }
+      const hits = S.patients.filter(p => p.name.toLowerCase().includes(s) || p.phone.includes(s)).slice(0, 6);
+      hits.forEach(p => list.append(h('li', null, h('button', { type: 'button', onmousedown: e => e.preventDefault(), onclick: () => openPatient(p.id) }, p.name, h('small', { class: 'muted' }, ` · ${ageOf(p)} · ${p.phone}`)))));
+      if (!hits.length) list.append(h('li', { class: 'hint', style: 'padding:8px 10px' }, 'No patient by that name.'));
+      list.hidden = false;
+    };
+    q.addEventListener('input', paint);
+    q.addEventListener('focus', paint);
+    q.addEventListener('blur', () => { list.hidden = true; });
+    q.addEventListener('keydown', e => { if (e.key === 'Enter') { const b = list.querySelector('button'); if (b) b.click(); } });
+    return h('div', { class: 'search finder' }, q, list);
+  }
+  // Whose column is on the schedule. The clinic has one practitioner, so the list is short.
+  function staffCard() {
+    return h('section', { class: 'card staff' }, h('h2', null, 'Staff'),
+      h('div', { class: 'staff-row' }, h('span', { class: 'staff-dot', 'aria-hidden': 'true' }), h('span', null, h('b', null, CLINIC.doctor), h('small', null, 'Psychiatrist · on the schedule'))));
+  }
+  function waitRows() {
+    const wl = S.waitlist.filter(w => P(w.pid));
+    return wl.length ? h('div', { class: 'list' }, wl.map(w => h('div', { class: 'li' }, h('div', { class: 'li-main' }, h('b', null, P(w.pid).name), h('small', null, `${w.note} · since ${fmtDay(w.since)}`)), btn('Offer a time', () => { closeDialog(); openBooking({ pid: w.pid, apptId: (nextAppt(P(w.pid)) || {}).id }); }, 'small'))))
+      : h('p', { class: 'empty small' }, 'No one is waiting.');
+  }
+  // The wait list slides out on the right on wide screens, in place of an appointment; elsewhere it opens as a sheet.
+  function waitPanel() {
+    return h('aside', { class: 'card apanel', 'aria-label': 'Wait list' },
+      h('div', { class: 'apanel-h' }, h('h2', null, 'Wait list'), h('button', { class: 'x', type: 'button', 'aria-label': 'Close', onclick: () => { ui.schedPanel = null; render(); } }, '×')),
+      h('p', { class: 'hint' }, 'Patients who would take an earlier time.'), waitRows());
+  }
+  function openWaitlist() { openDialog('Wait list', h('div', { class: 'stack' }, h('p', { class: 'hint' }, 'Patients who would take an earlier time.'), waitRows()), [btn('Close', closeDialog, 'primary')]); }
   function safetyBand(urgent) {
     return h('section', { class: 'alert-band', 'aria-label': 'Safety follow-up' },
       h('h2', null, urgent.length === 1 ? 'Safety follow-up needed' : `${urgent.length} patients need a safety follow-up`),
@@ -3343,20 +3405,6 @@ Psychiatrist`;
           h('p', { class: 'hint' }, [p.phone, `intake finished ${whenIn(p.intake.completedAt)}`, p.safetyAck ? `message left ${whenIn(p.safetyAck.at)}` : null].filter(Boolean).join(' · ')),
           h('p', { class: 'quote' }, clip(urgentOf(p)[0], 180))),
         btn('Mark contacted', () => openAck(p), 'small primary'))));
-  }
-  function miniCal(day) {
-    const first = new Date(day); first.setDate(1); first.setHours(0, 0, 0, 0);
-    const month = first.getMonth(), today = startOfDay(Date.now());
-    const booked = new Set(S.appts.filter(a => a.status !== 'cancelled').map(a => startOfDay(a.start)));
-    const shift = n => { const d = new Date(first); d.setMonth(d.getMonth() + n); ui.day = d.getTime(); ui.apptSel = null; render(); };
-    const grid = h('div', { class: 'mc-grid', role: 'group', 'aria-label': 'Choose a day' }, ['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(l => h('span', { class: 'mc-dow', 'aria-hidden': 'true' }, l)));
-    for (let i = 0; i < first.getDay(); i++) grid.append(h('span'));
-    for (const d = new Date(first); d.getMonth() === month; d.setDate(d.getDate() + 1)) {
-      const t = d.getTime();
-      grid.append(h('button', { type: 'button', class: 'mc-day' + (t === today ? ' today' : '') + (t === day ? ' sel' : '') + (booked.has(t) ? ' has' : ''), 'aria-label': fmtLong(t) + (booked.has(t) ? ', has appointments' : ''), 'aria-pressed': String(t === day), onclick: () => { ui.day = t; ui.schedView = 'day'; ui.apptSel = null; render(); } }, String(d.getDate())));
-    }
-    return h('section', { class: 'card mini' },
-      h('div', { class: 'mc-head' }, btn('‹', () => shift(-1), 'quiet small', { 'aria-label': 'Previous month' }), h('b', null, first.toLocaleDateString('en-CA', { month: 'long', year: 'numeric' })), btn('›', () => shift(1), 'quiet small', { 'aria-label': 'Next month' })), grid);
   }
   function timeGutter() {
     const gut = h('div', { class: 'cal-gut', style: `height:${(DAY_END - DAY_START) * 60 * PX}px` });
@@ -3450,11 +3498,6 @@ Psychiatrist`;
     return h('section', { class: 'card' }, h('h2', null, 'Needs attention'),
       items.length ? h('div', { class: 'work' }, items.map(([n, t, sub, fn]) => h('button', { type: 'button', onclick: fn }, h('span', { class: 'n' }, String(n)), h('span', { class: 't' }, h('b', null, t), h('small', null, clip(sub, 70)))))) : h('p', { class: 'empty small' }, 'All caught up.'));
   }
-  function waitlistCard() {
-    const wl = S.waitlist.filter(w => P(w.pid));
-    return h('section', { class: 'card' }, h('h2', null, 'Waitlist'),
-      wl.length ? h('div', { class: 'list' }, wl.map(w => h('div', { class: 'li' }, h('div', { class: 'li-main' }, h('b', null, P(w.pid).name), h('small', null, `${w.note} · since ${fmtDay(w.since)}`)), btn('Offer a time', () => openBooking({ pid: w.pid, apptId: (nextAppt(P(w.pid)) || {}).id }), 'small')))) : h('p', { class: 'empty small' }, 'No one is waiting.'));
-  }
   function freeSlots(dayMs, mins, ignoreId) {
     const out = [];
     for (let m = DAY_START * 60; m + mins <= DAY_END * 60; m += 15) {
@@ -3466,35 +3509,37 @@ Psychiatrist`;
     return out;
   }
 
-  /* ---------- Patients ---------- */
-  VIEWS.patients = function () {
-    const pg = h('div', { class: 'page' });
-    pg.append(pageHead('Patients', `${S.patients.length} patients`, [moreMenu([['Add a random test patient', addTestPatient]]), btn('Add patient', () => openNewPatient({}), 'primary')]));
-    const filter = inputEl('ptFilter', ui.filter, { type: 'search', class: 'filter', placeholder: 'Filter by name, phone or family doctor', 'aria-label': 'Filter patients' });
-    const box = h('div', { class: 'table-wrap' });
+  /* ---------- Patients, laid out like Jane's: the list on the left and the open profile beside it ---------- */
+  // On a phone the list and the profile take turns, with Patients at the top of the profile to go back.
+  const wideList = () => window.matchMedia('(min-width: 1000px)').matches;
+  const lastFirst = p => { const i = p.name.lastIndexOf(' '); return i > 0 ? `${p.name.slice(i + 1)}, ${p.name.slice(0, i)}` : p.name; };
+  VIEWS.patients = function () { return patientsView(wideList() ? P(ui.pid) : null); };
+  function patientsView(p) {
+    const pg = h('div', { class: 'page wide' });
+    const filter = inputEl('ptFilter', ui.filter, { type: 'search', class: 'filter', placeholder: 'Search patients', 'aria-label': 'Search patients' });
+    const box = h('div', { class: 'sl-groups' });
     const paint = () => {
       const q = ui.filter.trim().toLowerCase();
-      const rows = S.patients.filter(p => !q || [p.name, p.phone, p.gp.name, p.gp.clinic].join(' ').toLowerCase().includes(q)).sort((x, y) => x.name.localeCompare(y.name));
+      const rows = S.patients.filter(x => !q || [x.name, x.phone, x.gp.name, x.gp.clinic].join(' ').toLowerCase().includes(q)).sort((x, y) => lastFirst(x).localeCompare(lastFirst(y)));
       box.textContent = '';
-      box.append(h('table', { class: 'tbl' }, h('thead', null, h('tr', null, ['Name', 'Next appointment', 'Intake', 'Family doctor'].map(t => h('th', { scope: 'col' }, t)))),
-        h('tbody', null, rows.map(p => {
-          const a = nextAppt(p);
-          const tr = h('tr', { class: 'clickable' },
-            h('td', null, h('button', { class: 'linkish', type: 'button', onclick: () => openPatient(p.id) }, p.name), h('small', { class: 'sub' }, [ageOf(p) != null ? ageOf(p) + ' years' : null, pron(p), p.lang !== 'en' ? LANGS[p.lang] : null].filter(Boolean).join(' · '))),
-            h('td', null, a ? when(a.start) : h('span', { class: 'muted' }, 'None booked'), a ? h('small', { class: 'sub' }, `${TYPES[a.type].label} · ${MODES[a.mode]}`) : null),
-            h('td', null, intakeChip(p), urgentOf(p).length ? h('div', { class: 'sub' }, safetyChip(p)) : null),
-            h('td', null, p.gp.name, h('small', { class: 'sub' }, p.gp.clinic)));
-          tr.addEventListener('click', e => { if (!e.target.closest('button')) openPatient(p.id); });
-          return tr;
-        }))));
-      box.querySelectorAll('table.tbl').forEach(labelCells);
-      if (!rows.length) box.append(h('p', { class: 'empty' }, 'No patients match.'));
+      rows.forEach(x => {
+        const a = nextAppt(x);
+        box.append(h('button', { type: 'button', class: 'sl-item', 'aria-current': String(!!p && x.id === p.id), onclick: () => openPatient(x.id) },
+          h('span', { class: 'sl-top' }, h('b', null, lastFirst(x)), needsCall(x) ? h('span', { class: 'dot red', title: 'Safety follow-up needed' }) : null),
+          h('span', { class: 'sl-sub' }, h('small', null, [x.phone, a ? 'next ' + fmtDay(a.start) : null].filter(Boolean).join(' · ')))));
+      });
+      if (!rows.length) box.append(h('p', { class: 'empty small' }, S.patients.length ? 'No patients match.' : 'No patients yet.'));
     };
     filter.addEventListener('input', () => { ui.filter = filter.value; paint(); });
     paint();
-    pg.append(h('section', { class: 'card stack' }, filter, box));
+    const side = h('aside', { class: 'card session-list pts-col', 'aria-label': 'Patients' },
+      h('div', { class: 'card-h' }, h('h2', null, 'Patients'), h('span', { class: 'hint' }, `${S.patients.length} in all`)),
+      filter, box,
+      h('div', { class: 'row' }, btn('Add patient', () => openNewPatient({}), 'primary small'), moreMenu([['Add a random test patient', addTestPatient]])));
+    pg.append(h('div', { class: 'pts' + (p ? ' has-sel' : '') }, side,
+      p ? profileView(p) : h('section', { class: 'card' }, h('p', { class: 'empty' }, S.patients.length ? 'Pick a patient to open their profile.' : 'No patients yet. Add one to start.'))));
     return pg;
-  };
+  }
   function addTestPatient() {
     const r = testPatient(), a = r.a;
     const id = uniqueId(a.name);
@@ -3589,8 +3634,12 @@ Psychiatrist`;
   VIEWS.patient = function () {
     const p = P(ui.pid);
     if (!p) { ui.view = 'patients'; return VIEWS.patients(); }
+    return patientsView(p);
+  };
+  // The profile: a header like Jane's, with the patient's initials, a row of counts and the tabs, then the tab.
+  function profileView(p) {
     if (!PTABS.some(([k]) => k === ui.tab)) ui.tab = 'profile';
-    const pg = h('div', { class: 'page' });
+    const pg = h('div', { class: 'pt-pane stack gap-l' });
     const a = nextAppt(p), todayAppt = a && startOfDay(a.start) === clinicDay ? a : null;
     const alerts = [];
     if (urgentOf(p).length) alerts.push(chip(!p.safetyAck ? 'Safety answers, not contacted yet' : `Safety answers, ${needsCall(p) ? 'message left' : 'contacted'} ${onDay(p.safetyAck.at)}`, needsCall(p) ? 'danger' : 'warn'));
@@ -3606,17 +3655,23 @@ Psychiatrist`;
       p.intake.status !== 'done' ? ['Send intake link', () => openIntakeLink(p)] : null,
       ['Edit details', () => openDetails(p)],
     ]);
+    const mine = S.appts.filter(x => x.pid === p.id), now = Date.now();
+    const seen = S.visits.filter(v => v.pid === p.id && v.status === 'signed').sort((x, y) => y.start - x.start);
+    const counts = [['Upcoming', mine.filter(x => x.start > now && x.status !== 'cancelled').length], ['Notes signed', seen.length], ['No-shows', mine.filter(x => x.status === 'noshow').length], ['Last seen', seen.length ? fmtDay(seen[0].start) : 'Not yet']];
+    const initials = p.name.split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase();
     pg.append(h('header', { class: 'pt-head' },
-      h('div', null, h('button', { class: 'back', type: 'button', onclick: () => go('patients') }, 'Patients')),
+      h('div', { class: 'phone-back' }, h('button', { class: 'back', type: 'button', onclick: () => go('patients') }, 'Patients')),
       h('div', { class: 'pt-top' },
+        h('span', { class: 'avatar', 'aria-hidden': 'true' }, initials),
         h('div', { class: 'pt-name' }, h('h1', null, p.name),
           h('p', { class: 'pt-meta' }, [pron(p), ageOf(p) != null ? ageOf(p) + ' years' : null, 'DOB ' + fmtDate(p.dob), 'PHN ending ' + p.phnLast, p.lang !== 'en' ? 'Speaks ' + LANGS[p.lang] : null].filter(Boolean).join(' · '))),
         h('div', { class: 'head-actions' }, more, primary)),
       alerts.length ? h('div', { class: 'pt-alerts' }, alerts) : null,
+      h('dl', { class: 'pt-counts' }, counts.map(([k, v]) => h('div', null, h('dt', null, k), h('dd', null, String(v))))),
       h('nav', { class: 'ptabs', role: 'tablist', 'aria-label': 'Patient profile' }, PTABS.map(([k, l]) => h('button', { type: 'button', role: 'tab', 'aria-selected': String(ui.tab === k), onclick: () => { ui.tab = k; ui.editing = false; renderKeepScroll = true; render(); } }, l, k === 'intake' && needsCall(p) ? h('span', { class: 'dot red', title: 'Safety follow-up needed' }) : null)))));
     pg.append({ profile: tabProfile, appts: tabAppts, intake: tabIntake, charts: tabCharts, letters: tabLetters, rx: tabRx, docs: tabDocs }[ui.tab](p));
     return pg;
-  };
+  }
   const kvRows = rows => rows.filter(r => r[1]).flatMap(([k, v, cls]) => [h('dt', null, k), h('dd', cls ? { class: cls } : null, v)]);
   function tabProfile(p) {
     const sc = scoresOf(p), urgent = urgentOf(p), review = reviewOf(p);
@@ -3660,7 +3715,7 @@ Psychiatrist`;
       chip(VISIT_STATUS[v.status][0], VISIT_STATUS[v.status][1]));
     return h('section', { class: 'card' }, h('div', { class: 'card-h' }, h('h2', null, 'Chart entries'), role === 'doctor' ? btn('New visit', () => openNewVisit(p.id), 'small') : null),
       visits.length ? h('div', { class: 'list' }, visits.map(row)) : h('p', { class: 'empty small' }, 'No chart entries yet.'),
-      h('p', { class: 'hint' }, 'Each entry opens in Visits with its recording, transcript and note.'));
+      h('p', { class: 'hint' }, 'Each entry opens on its day in the Day tab, with its recording, transcript and note.'));
   }
   // A score the way a health app shows a reading: the number, the scale, and the band in colour when it matters.
   function scoreEl(v, label, max, band, hi, mid) { const b = v != null ? band(v) : null; return h('div', { class: 'score' }, h('b', null, v != null ? String(v) : '–'), h('span', null, h('span', { class: 'score-l' }, label), h('span', { class: 'pill' + (b && hi.includes(b) ? ' hi' : b && mid.includes(b) ? ' mid' : '') }, b ? `${b} · out of ${max}` : 'not finished'))); }
@@ -3721,7 +3776,7 @@ Psychiatrist`;
     return h('div', { class: 'doc-grid' }, rail, mainP);
   }
 
-  /* ---------- Visits: the visit list beside the open visit, with Context, Transcript and Note like an AI scribe ---------- */
+  /* ---------- the Day tab: the day's visits beside the open one, which records and writes the note like an AI scribe ---------- */
   let rec = { vid: null, idx: 0, timer: null };
   function newVisit(a) { return { id: uid('v'), pid: a.pid, start: a.start, type: a.type, mode: a.mode, lang: P(a.pid).lang || 'en', demo: { alex: 'alex', meilin: 'meilin', harjinder: 'harjinder' }[a.pid] || 'generic', status: 'scheduled', consent: false, transcript: [], transcriptFrom: null, note: { mse: '', impression: '', plan: '', summary: '', interp: '' } }; }
   function startVisit(a) {
@@ -3730,39 +3785,32 @@ Psychiatrist`;
     if (['booked', 'confirmed', 'arrived'].includes(a.status)) a.status = 'inprogress';
     persist(); closeDialog(); go('visits', { visitId: v.id, sessionTab: null, apptSel: null });
   }
-  // Laid out like Heidi (decided 2026-11-04): a searchable visit list with a one-line summary per visit; the record
-  // controls in the visit's header; Context, Note, Transcript; the note written as soon as the recording stops.
+  // Laid out like Jane's Day tab (decided 2026-11-06): the day's visits on the left, with ‹ › to change day, and the
+  // chosen visit on the right, where it is recorded and the AI writes the note (the visit itself kept its Heidi-style
+  // Context, Note and Transcript tabs). Opening a visit from elsewhere turns to its day.
+  const apptOfVisit = v => S.appts.find(a => a.visitId === v.id);
   VIEWS.visits = function () {
     const pg = h('div', { class: 'page wide' });
-    const all = S.visits.filter(v => P(v.pid)).sort((x, y) => x.start - y.start);
-    const dayOf = v => startOfDay(v.start), back = n => { const d = new Date(clinicDay); d.setDate(d.getDate() - n); return d.getTime(); };
-    const todayVs = all.filter(v => dayOf(v) === clinicDay);
-    const earlier = all.filter(v => dayOf(v) < clinicDay && v.status !== 'scheduled').reverse();
-    const upcoming = all.filter(v => dayOf(v) > clinicDay);
-    const cur = all.find(v => v.id === ui.visitId) || todayVs.find(v => v.status !== 'signed') || todayVs[0] || earlier[0] || upcoming[0];
-    if (cur) ui.visitId = cur.id;
-    const item = v => sessionItem(v, v === cur);
-    const groups = [['Today', todayVs], ['Yesterday', earlier.filter(v => dayOf(v) === back(1))], ['Previous 7 days', earlier.filter(v => dayOf(v) < back(1) && dayOf(v) >= back(7))], ['Earlier', earlier.filter(v => dayOf(v) < back(7))]];
-    const shut = !ui.slUpcoming && !upcoming.includes(cur);
-    const list = h('div', { class: 'sl-groups' },
-      upcoming.length ? h('div', { class: 'sl-group' + (shut ? ' shut' : '') }, h('button', { type: 'button', class: 'sl-toggle', 'aria-expanded': String(!shut), onclick: () => { ui.slUpcoming = shut; renderKeepScroll = true; render(); } }, svgEl('<path d="M9 6l6 6-6 6"/>', 'chev'), `Upcoming (${upcoming.length})`), upcoming.map(item)) : null,
-      groups.map(([label, vs]) => (vs.length ? h('div', { class: 'sl-group' }, h('h3', null, label), vs.map(item)) : null)),
-      h('p', { class: 'hint sl-none', hidden: true }, 'No visits match.'));
-    const search = h('input', { type: 'search', class: 'filter', placeholder: 'Search visits', 'aria-label': 'Search visits', autocomplete: 'off' });
-    // Searching filters the list in place, so the box keeps its focus; it also looks inside the closed Upcoming group.
-    search.addEventListener('input', () => {
-      const q = search.value.trim().toLowerCase();
-      list.querySelectorAll('.sl-item').forEach(b => { b.hidden = !!q && !b.dataset.name.includes(q); });
-      list.querySelectorAll('.sl-group').forEach(g => { g.classList.toggle('searching', !!q); g.hidden = !!q && !g.querySelector('.sl-item:not([hidden])'); });
-      list.querySelector('.sl-none').hidden = !q || !!list.querySelector('.sl-item:not([hidden])');
-    });
-    const side = h('aside', { class: 'card session-list', 'aria-label': 'Visits' },
-      h('div', { class: 'card-h' }, h('h2', null, 'Visits'), role === 'doctor' ? btn('New visit', () => openNewVisit(), 'primary small') : null),
-      search, list);
-    pg.append(h('div', { class: 'visits' }, side, cur ? sessionView(P(cur.pid), cur) : h('section', { class: 'card' }, h('p', { class: 'empty' }, 'No visits yet.'))));
+    const want = S.visits.find(v => v.id === ui.visitId && P(v.pid));
+    if (want) ui.chartDay = startOfDay(want.start);
+    const day = startOfDay(ui.chartDay || clinicDay), today = startOfDay(Date.now());
+    const list = S.visits.filter(v => P(v.pid) && startOfDay(v.start) === day && (apptOfVisit(v) || {}).status !== 'cancelled').sort((x, y) => x.start - y.start);
+    const cur = want && list.includes(want) ? want : list.find(v => v.status !== 'signed') || list[0];
+    ui.visitId = cur ? cur.id : null;
+    const turn = d => { ui.chartDay = d; ui.visitId = null; ui.sessionTab = null; renderKeepScroll = false; render(); };
+    const side = h('aside', { class: 'card session-list day-col', 'aria-label': 'Visits this day' },
+      h('div', { class: 'day-nav' },
+        btn('‹', () => turn(shiftWorkday(day, -1)), 'quiet small', { 'aria-label': 'Previous day' }),
+        h('div', { class: 'day-when' }, h('b', null, day === today ? 'Today' : fmtDay(day)), h('small', null, longDay(day))),
+        btn('›', () => turn(shiftWorkday(day, 1)), 'quiet small', { 'aria-label': 'Next day' })),
+      day !== startOfDay(clinicDay) ? btn('Back to today', () => turn(clinicDay), 'quiet small') : null,
+      list.length ? h('div', { class: 'sl-groups' }, list.map(v => sessionItem(v, v === cur))) : h('p', { class: 'empty small' }, isWeekend(day) ? 'The clinic is closed.' : 'No visits this day.'),
+      role === 'doctor' ? btn('New visit', () => openNewVisit(), 'small') : null,
+      list.some(v => v.status === 'signed') ? h('p', { class: 'hint' }, 'A lock means the note is signed.') : null);
+    pg.append(h('div', { class: 'visits' }, side, cur ? sessionView(P(cur.pid), cur) : h('section', { class: 'card' }, h('p', { class: 'empty' }, 'Pick a day with visits, or start one from the schedule.'))));
     return pg;
   };
-  // A visit's one-line summary, like Heidi's list: the impression once there is one, otherwise where the visit is at.
+  // A visit's one-line summary in the day's list: the impression once there is one, otherwise where the visit is at.
   function visitSummary(v) {
     const imp = (v.note.impression || '').split('\n')[0].trim();
     if (imp) return imp;
@@ -3772,7 +3820,7 @@ Psychiatrist`;
   function sessionItem(v, sel) {
     const p = P(v.pid);
     return h('button', { type: 'button', class: 'sl-item', 'data-name': p.name.toLowerCase(), 'aria-current': String(sel), onclick: () => { ui.visitId = v.id; ui.sessionTab = null; renderKeepScroll = true; render(); showOnPhone('.session', 1000); } },
-      h('span', { class: 'sl-top' }, h('b', null, p.name), v.status === 'signed' ? lockIcon() : null, h('small', { class: 'sl-when' }, startOfDay(v.start) === clinicDay ? fmtTime(v.start) : fmtDay(v.start))),
+      h('span', { class: 'sl-top' }, h('b', null, p.name), v.status === 'signed' ? lockIcon() : null, h('small', { class: 'sl-when' }, fmtTime(v.start))),
       h('span', { class: 'sl-sub' }, h('small', null, visitSummary(v)), v.status !== 'signed' && v.status !== 'scheduled' ? chip(VISIT_STATUS[v.status][0], VISIT_STATUS[v.status][1]) : null));
   }
   function sessionView(p, v) {
@@ -3874,7 +3922,7 @@ Psychiatrist`;
   function openNoteView(v) {
     openDialog(`Note · ${fmtDay(v.start)}`, h('div', { class: 'stack' },
       h('p', { class: 'hint' }, `${TYPES[v.type].label}, ${MODES[v.mode].toLowerCase()}. ${sentence(`Signed by ${CLINIC.doctor} ${whenIn(v.signedAt)}`)}`), noteRead(v)), [
-      btn('Open in Visits', () => { closeDialog(); go('visits', { visitId: v.id, sessionTab: 'note' }); }),
+      btn('Open in the Day tab', () => { closeDialog(); go('visits', { visitId: v.id, sessionTab: 'note' }); }),
       btn('Close', closeDialog, 'primary')], true);
   }
   // The transcript with its AI summary beside it. Picking a line lights up the summary points it went into; picking a point lights up its lines.
@@ -4592,7 +4640,7 @@ Psychiatrist`;
       }, 'primary')], true);
   }
   function askResetDemo() {
-    openDialog(trial ? 'Start over?' : 'Reset the demo?', h('p', null, trial ? 'Every patient, appointment, fax and note you added is removed, and the clinic starts empty again.' : 'Every patient, appointment, fax and note goes back to how the demo started. Your changes in this browser are lost.'), [btn('Cancel', closeDialog), btn(trial ? 'Start over' : 'Reset', () => { stopTimer(); S = freshStore(); persist(); closeDialog(); Object.assign(ui, { view: 'schedule', pid: null, tab: 'profile', visitId: null, letterId: null, inboxSel: null, day: clinicDay, schedView: 'day', apptSel: null, sessionTab: null, editing: false }); toast(trial ? 'The clinic is empty again.' : 'Demo data reset.'); go(trial ? 'home' : 'schedule'); }, 'danger')]);
+    openDialog(trial ? 'Start over?' : 'Reset the demo?', h('p', null, trial ? 'Every patient, appointment, fax and note you added is removed, and the clinic starts empty again.' : 'Every patient, appointment, fax and note goes back to how the demo started. Your changes in this browser are lost.'), [btn('Cancel', closeDialog), btn(trial ? 'Start over' : 'Reset', () => { stopTimer(); S = freshStore(); persist(); closeDialog(); Object.assign(ui, { view: 'schedule', pid: null, tab: 'profile', visitId: null, letterId: null, inboxSel: null, day: clinicDay, schedView: 'day', apptSel: null, sessionTab: null, editing: false }); toast(trial ? 'The clinic is empty again.' : 'Demo data reset.'); go('schedule'); }, 'danger')]);
   }
 
   /* ---------- the patient's view: the intake chat from the prototype ---------- */
@@ -4803,30 +4851,21 @@ Psychiatrist`;
     if (ev.key !== 'Escape') return;
     if (!$('phoneOverlay').hidden) { if (!$('menu').hidden || !$('confirm').hidden) { closeMenu(); $('confirm').hidden = true; } else closePatientView(); return; }
     if (!$('overlay').hidden) closeDialog();
-    $('searchList').hidden = true;
   });
-  function setRole(r) { role = r === 'admin' ? 'admin' : 'doctor'; try { localStorage.setItem(KEY + ':role', role); } catch (e) { /* per-viewer convenience only */ } $('role').value = role; $('roleM').value = role; render(); toast(`Now viewing as ${roleName()}.`); }
-  $('role').addEventListener('change', e => setRole(e.target.value));
-  $('roleM').addEventListener('change', e => setRole(e.target.value));
+  // The name menu at the top right, as in Jane: who the clinic is viewed as, Claude, starting over and signing out.
+  function syncAcct() {
+    $('acctName').textContent = role === 'doctor' ? CLINIC.doctor : 'Sam (admin)';
+    $('acctMenu').querySelectorAll('[data-role]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.role === role)));
+  }
+  function setRole(r) { role = r === 'admin' ? 'admin' : 'doctor'; try { localStorage.setItem(KEY + ':role', role); } catch (e) { /* per-viewer convenience only */ } syncAcct(); render(); toast(`Now viewing as ${roleName()}.`); }
+  $('acctBtn').addEventListener('click', ev => { ev.stopPropagation(); const list = $('acctMenu'), open = list.hidden; closeMenus(); list.hidden = !open; $('acctBtn').setAttribute('aria-expanded', String(open)); });
+  $('acctMenu').addEventListener('click', ev => { const b = ev.target.closest('button'); if (!b) return; closeMenus(); if (b.dataset.role && b.dataset.role !== role) setRole(b.dataset.role); });
   $('resetDemo').addEventListener('click', askResetDemo);
   $('claudeBtn').addEventListener('click', claudeMenu);
   $('signOut').addEventListener('click', signOut);
   // Changes waiting to be saved (a recording's last lines, say) are saved as the tab closes.
   window.addEventListener('pagehide', () => { if (S) persist(); });
   $('homeBtn').addEventListener('click', () => go('home'));
-  const search = $('search'), sList = $('searchList');
-  const runSearch = () => {
-    const q = search.value.trim().toLowerCase();
-    sList.textContent = '';
-    if (!q) { sList.hidden = true; return; }
-    const hits = S.patients.filter(p => p.name.toLowerCase().includes(q) || p.phone.includes(q)).slice(0, 6);
-    hits.forEach(p => sList.append(h('li', null, h('button', { type: 'button', onclick: () => { search.value = ''; sList.hidden = true; openPatient(p.id); } }, p.name, h('small', { class: 'muted' }, ` · ${ageOf(p)} · ${p.phone}`)))));
-    if (!hits.length) sList.append(h('li', { class: 'hint', style: 'padding:8px 10px' }, 'No patient by that name.'));
-    sList.hidden = false;
-  };
-  search.addEventListener('input', runSearch);
-  search.addEventListener('keydown', e => { if (e.key === 'Enter') { const b = sList.querySelector('button'); if (b) b.click(); } });
-  document.addEventListener('click', e => { if (!e.target.closest('#searchBox')) sList.hidden = true; });
 
   /* ---------- the testing version: a sign-in, then the account's own clinic ---------- */
   const SESSION = 'psych-practice-trial:session';
@@ -4893,7 +4932,7 @@ Psychiatrist`;
     }
     S.visits.forEach(v => { if (v.status === 'recording') v.status = v.transcript && v.transcript.length ? 'recorded' : 'scheduled'; });
     S.faxes.forEach(finishFax);
-    $('role').value = role; $('roleM').value = role;
+    syncAcct();
     syncClaudeBtn();
     buildNav();
     window.addEventListener('hashchange', routeFromHash);

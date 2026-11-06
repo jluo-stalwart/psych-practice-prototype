@@ -1,6 +1,6 @@
 # Psychiatry practice prototype
 
-A clickable prototype of a psychiatry practice system: Home, Schedule, Patients, Visits, Inbox and Tasks, and the patient's intake as a phone chat.
+A clickable prototype of a psychiatry practice system: Schedule, Day, Patients, Inbox and Tasks, with Home behind the clinic name, and the patient's intake as a phone chat.
 
 Open it at https://jluo-stalwart.github.io/psych-practice-prototype/
 
