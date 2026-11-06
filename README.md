@@ -10,4 +10,6 @@ The AI buttons run on your own Claude account. Choose "Connect Claude" in the to
 
 In Chrome, Edge or Safari, the record button records from your microphone and turns speech into text with the browser's speech recognition. The browser's maker hears the audio (Google for Chrome, Microsoft for Edge, Apple for Safari), so use made-up voices only. The made-up sessions are in the menu beside the record button, and other browsers play them instead.
 
-`index.html` is the whole prototype. It is built from separate source files kept elsewhere, so change those rather than this file.
+A testing version for invited testers is at https://jluo-stalwart.github.io/psych-practice-prototype/trial/. It opens on a sign-in, and each test account gets its own clinic that starts empty and keeps the tester's work in their browser.
+
+`index.html` is the whole prototype, and `trial/index.html` is the testing version. Both are built from separate source files kept elsewhere, so change those rather than these files.

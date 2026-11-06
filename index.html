@@ -165,7 +165,15 @@ a{color:var(--accent-text);text-decoration:none}
 .role-d{display:inline-flex}
 .topbar .link{background:none;border:0;color:var(--accent-text);cursor:pointer;padding:4px 2px;font-size:12px;white-space:nowrap}
 @media (max-width: 900px){.topnav,.role-d,.topbar .link,.brand-text small{display:none}}
-@media (max-width: 900px){.topbar .claude-link:not([hidden]){display:inline-block;order:4} .topbar:has(.claude-link:not([hidden])) .search{flex-basis:0}}
+@media (max-width: 900px){.topbar .phone-link:not([hidden]){display:inline-block;order:4} .topbar:has(.phone-link:not([hidden])) .search{flex-basis:0}}
+/* the testing version's sign-in, shown instead of the clinic until the account signs in */
+html[data-locked] #shell{display:none}
+.signin{min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:24px 16px;background:var(--bg)}
+.signin-card{width:min(380px,100%);background:var(--sheet);border-radius:14px;box-shadow:var(--shadow);padding:28px 24px 24px}
+.signin-card h1{font-size:22px;font-weight:700;letter-spacing:-.02em}
+.signin-brand{display:flex;align-items:center;gap:10px;font-size:13px}
+.signin-card .btn-primary{width:100%;min-height:36px}
+.start-steps{margin:0;padding-left:20px;display:grid;gap:6px;font-size:13px}
 .connect ol{margin:0;padding-left:20px;display:grid;gap:6px}
 @media (min-width: 901px) and (max-width: 1179px){.brand-text{display:none}.brand{padding:4px}}
 
@@ -801,8 +809,9 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
       <label class="role-m role-d" for="role"><span class="visually-hidden">Signed in as</span>
         <select id="role"><option value="doctor">Dr. Lee, psychiatrist</option><option value="admin">Sam, clinic admin</option></select>
       </label>
-      <button id="claudeBtn" class="link claude-link" type="button" hidden>Connect Claude</button>
+      <button id="claudeBtn" class="link phone-link" type="button" hidden>Connect Claude</button>
       <button id="resetDemo" class="link" type="button">Reset demo</button>
+      <button id="signOut" class="link phone-link" type="button" hidden>Sign out</button>
       <label class="mobile-only role-m" for="roleM">As
         <select id="roleM"><option value="doctor">Dr. Lee</option><option value="admin">Admin</option></select>
       </label>
@@ -2569,8 +2578,9 @@ Psychiatrist`;
   /* ---------- the demo practice ---------- */
   function intakeFromDemo(d, doneAt) { const T = {}; Object.keys(d.off).forEach(k => { T[k] = doneAt + d.off[k]; }); return { A: JSON.parse(JSON.stringify(d.A)), T, started: doneAt + d.startOff }; }
   function alexIntake(doneAt) { const end = Math.max(...Object.values(SAMPLE_T)); const T = {}; Object.keys(SAMPLE_T).forEach(k => { T[k] = doneAt + SAMPLE_T[k] - end; }); return { A: JSON.parse(JSON.stringify(SAMPLE_A)), T, started: doneAt + SAMPLE_START - end }; }
+  const emptyClinic = () => ({ v: 1, day: ymd(clinicDay), patients: [], appts: [], visits: [], letters: [], faxes: [], rx: [], tasks: [], events: [], waitlist: [] });
   function seed() {
-    const s = { v: 1, day: ymd(clinicDay), patients: [], appts: [], visits: [], letters: [], faxes: [], rx: [], tasks: [], events: [], waitlist: [] };
+    const s = emptyClinic();
     const ev = (pid, t, text) => s.events.push({ at: t, pid, text });
     const person = o => Object.assign({ email: '', address: '', interpreter: '', reminders: 'text', allergies: '', emergency: '', intake: { status: 'none' }, safetyAck: null }, o);
     s.patients.push(
@@ -2671,14 +2681,20 @@ Psychiatrist`;
   }
 
   /* ---------- store: each viewer's own copy of the demo, kept in this browser ---------- */
-  const KEY = 'psych-practice-demo-v1';
+  // The testing version (the trial page) opens on a sign-in for its test accounts, each kept as the SHA-256 of its email
+  // and password, and gives each account its own clinic that starts empty and, unlike the demo, keeps from day to day.
+  const trialAccounts = ((document.querySelector('meta[name="practice-trial"]') || {}).content || '').split(',').map(s => s.trim()).filter(Boolean);
+  const trial = trialAccounts.length > 0;
+  let KEY = 'psych-practice-demo-v1';
   let S = null;
   function persist() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* the demo still works without storage */ } }
   let saveTimer = null;
   const persistSoon = () => { clearTimeout(saveTimer); saveTimer = setTimeout(persist, 400); };
-  function loadStore() { try { const s = JSON.parse(localStorage.getItem(KEY) || 'null'); if (s && s.v === 1 && s.day === ymd(clinicDay)) return s; } catch (e) { /* start fresh */ } return null; }
-  let role = 'doctor';
-  try { role = localStorage.getItem(KEY + ':role') === 'admin' ? 'admin' : 'doctor'; } catch (e) { /* default */ }
+  // The demo starts over each day, since its made-up patients are dated from today.
+  function loadStore() { try { const s = JSON.parse(localStorage.getItem(KEY) || 'null'); if (s && s.v === 1 && (trial || s.day === ymd(clinicDay))) return s; } catch (e) { /* start fresh */ } return null; }
+  const freshStore = () => (trial ? emptyClinic() : seed());
+  const readRole = () => { try { return localStorage.getItem(KEY + ':role') === 'admin' ? 'admin' : 'doctor'; } catch (e) { return 'doctor'; } };
+  let role = readRole();
   const roleName = () => (role === 'doctor' ? 'Dr. Lee' : 'Sam (admin)');
   const ui = { view: 'home', pid: null, tab: 'profile', visitId: null, letterId: null, inboxTab: 'in', inboxSel: null, day: clinicDay, schedView: 'day', apptSel: null, sessionTab: null, intakeTab: 'ai', taskScope: 'mine', filter: '' };
   const P = id => S.patients.find(p => p.id === id);
@@ -3223,6 +3239,7 @@ Psychiatrist`;
     const greeting = `${hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening'}, ${role === 'doctor' ? CLINIC.doctor : 'Sam'}`;
     const subtitle = isToday ? `${longDay(now)} · ${todays.length || 'No'} appointment${todays.length === 1 ? '' : 's'} today` : `${longDay(now)} · the clinic is closed today`;
     const pg = h('div', { class: 'page' }, pageHead(greeting, subtitle, btn('Book appointment', () => openBooking({}), 'primary')));
+    if (trial && !S.patients.length) pg.append(startCard());
     const urgent = S.patients.filter(needsCall);
     if (urgent.length) pg.append(safetyBand(urgent));
     pg.append(h('div', { class: 'cols two' },
@@ -3230,6 +3247,16 @@ Psychiatrist`;
       h('div', { class: 'stack gap-l' }, workCard(), tasksCard())));
     return pg;
   };
+  // The testing version's clinic starts empty, so Home says where to begin until there's a patient.
+  function startCard() {
+    return h('section', { class: 'card stack' },
+      h('div', { class: 'card-h' }, h('h2', null, 'Your clinic is empty')),
+      h('ol', { class: 'start-steps' },
+        h('li', null, 'Add a patient, or a made-up one to save typing.'),
+        h('li', null, 'Book their consult and send the intake link. Preview as patient answers it the way they would.'),
+        h('li', null, 'At the visit, record it, have the AI write the note, then sign it and fax the letter.')),
+      h('div', { class: 'toolbar' }, btn('Add a patient', () => openNewPatient({}), 'primary small'), btn('Add a random test patient', addTestPatient, 'small')));
+  }
   // Opens an appointment the way the schedule does: its panel beside the day sheet on wide screens, a dialog otherwise.
   const showAppt = a => { if (panelFits()) go('schedule', { day: startOfDay(a.start), schedView: 'day', apptSel: a.id }); else openAppt(a); };
   const untilText = a => { const m = Math.round((a.start - Date.now()) / MIN); return m <= 0 ? 'Now' : m < 60 ? `In ${m} min` : m < 180 ? `In ${Math.floor(m / 60)} hr${m % 60 ? ` ${m % 60} min` : ''}` : ''; };
@@ -4564,7 +4591,7 @@ Psychiatrist`;
       }, 'primary')], true);
   }
   function askResetDemo() {
-    openDialog('Reset the demo?', h('p', null, 'Every patient, appointment, fax and note goes back to how the demo started. Your changes in this browser are lost.'), [btn('Cancel', closeDialog), btn('Reset', () => { stopTimer(); S = seed(); persist(); closeDialog(); Object.assign(ui, { view: 'schedule', pid: null, tab: 'profile', visitId: null, letterId: null, inboxSel: null, day: clinicDay, schedView: 'day', apptSel: null, sessionTab: null, editing: false }); toast('Demo data reset.'); go('schedule'); }, 'danger')]);
+    openDialog(trial ? 'Start over?' : 'Reset the demo?', h('p', null, trial ? 'Every patient, appointment, fax and note you added is removed, and the clinic starts empty again.' : 'Every patient, appointment, fax and note goes back to how the demo started. Your changes in this browser are lost.'), [btn('Cancel', closeDialog), btn(trial ? 'Start over' : 'Reset', () => { stopTimer(); S = freshStore(); persist(); closeDialog(); Object.assign(ui, { view: 'schedule', pid: null, tab: 'profile', visitId: null, letterId: null, inboxSel: null, day: clinicDay, schedView: 'day', apptSel: null, sessionTab: null, editing: false }); toast(trial ? 'The clinic is empty again.' : 'Demo data reset.'); go(trial ? 'home' : 'schedule'); }, 'danger')]);
   }
 
   /* ---------- the patient's view: the intake chat from the prototype ---------- */
@@ -4782,6 +4809,9 @@ Psychiatrist`;
   $('roleM').addEventListener('change', e => setRole(e.target.value));
   $('resetDemo').addEventListener('click', askResetDemo);
   $('claudeBtn').addEventListener('click', claudeMenu);
+  $('signOut').addEventListener('click', signOut);
+  // Changes waiting to be saved (a recording's last lines, say) are saved as the tab closes.
+  window.addEventListener('pagehide', () => { if (S) persist(); });
   $('homeBtn').addEventListener('click', () => go('home'));
   const search = $('search'), sList = $('searchList');
   const runSearch = () => {
@@ -4797,31 +4827,83 @@ Psychiatrist`;
   search.addEventListener('keydown', e => { if (e.key === 'Enter') { const b = sList.querySelector('button'); if (b) b.click(); } });
   document.addEventListener('click', e => { if (!e.target.closest('#searchBox')) sList.hidden = true; });
 
-  S = loadStore();
-  if (!S) { S = seed(); persist(); }
-  // Intakes are all done online now; a demo saved while one was still marked "on paper" gets the patient's online intake.
-  if (S.patients.some(p => p.intake.status === 'paper')) {
-    const fresh = seed();
-    S.patients.forEach(p => {
-      if (p.intake.status !== 'paper') return;
-      const f = fresh.patients.find(x => x.id === p.id);
-      p.intake = f ? f.intake : { status: 'none' };
-      if (f && !p.safetyAck) p.safetyAck = f.safetyAck;
-      // Their consult letter gets the intake history it now has.
-      S.letters.forEach(l => { const v = S.visits.find(x => x.id === l.visitId); if (l.pid === p.id && v && v.type === 'consult') l.text = letterText(p, v); });
+  /* ---------- the testing version: a sign-in, then the account's own clinic ---------- */
+  const SESSION = 'psych-practice-trial:session';
+  // An account is the SHA-256 of its email (trimmed, lower case), a newline and its password; its first 16 characters
+  // name its clinic in this browser's storage. The page never holds the email itself.
+  async function accountFor(email, password) {
+    const bytes = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(email.trim().toLowerCase() + '\n' + password)));
+    const hex = [...bytes].map(b => b.toString(16).padStart(2, '0')).join('');
+    return trialAccounts.includes(hex) ? hex.slice(0, 16) : '';
+  }
+  function signedInAccount() { try { const a = localStorage.getItem(SESSION) || ''; return a && trialAccounts.some(x => x.startsWith(a)) ? a : ''; } catch (e) { return ''; } }
+  function showSignIn() {
+    const email = h('input', { id: 'siEmail', type: 'email', autocomplete: 'username', autocapitalize: 'off', spellcheck: 'false' });
+    const pass = h('input', { id: 'siPass', type: 'password', autocomplete: 'current-password' });
+    const err = h('p', { class: 'err', role: 'alert', hidden: true });
+    const say = msg => { err.textContent = msg; err.hidden = !msg; };
+    const go = h('button', { class: 'btn btn-primary', type: 'submit' }, 'Sign in');
+    const form = h('form', { class: 'signin-card form', novalidate: true },
+      h('div', { class: 'signin-brand' }, h('span', { class: 'brand-mark', 'aria-hidden': 'true' }, 'Ψ'), h('b', null, CLINIC.name)),
+      h('h1', null, 'Sign in'),
+      h('p', { class: 'hint' }, 'Your test clinic starts empty. Everything in it is made up, and it’s kept in this browser.'),
+      field('Email', email), field('Password', pass), err, go);
+    form.addEventListener('submit', async ev => {
+      ev.preventDefault();
+      if (!email.value.trim() || !pass.value) { say('Enter the email and password of your test account.'); return; }
+      if (!(window.crypto && crypto.subtle)) { say('Signing in needs the page’s https address.'); return; }
+      say(''); go.disabled = true;
+      let acct = '';
+      try { acct = await accountFor(email.value, pass.value); } catch (e) { acct = ''; }
+      go.disabled = false;
+      if (!acct) { say('That email and password don’t match a test account.'); pass.select(); return; }
+      try { localStorage.setItem(SESSION, acct); } catch (e) { /* signed in until the page closes */ }
+      enterTrial(acct);
     });
-    persist();
+    document.body.append(h('main', { id: 'signin', class: 'signin' }, form));
+    email.focus();
   }
-  S.visits.forEach(v => { if (v.status === 'recording') v.status = v.transcript && v.transcript.length ? 'recorded' : 'scheduled'; });
-  S.faxes.forEach(finishFax);
-  $('role').value = role; $('roleM').value = role;
-  syncClaudeBtn();
-  buildNav();
-  window.addEventListener('hashchange', routeFromHash);
-  if (window.claude && typeof window.claude.use === 'function') {
-    window.claude.use('sample').then(fn => { sampleFn = fn || null; sampleState = fn ? 'ready' : 'off'; softRender(); }, () => { sampleFn = null; sampleState = 'off'; softRender(); });
+  function enterTrial(acct) {
+    KEY = 'psych-practice-trial-v1:' + acct; role = readRole();
+    const si = $('signin'); if (si) si.remove();
+    document.documentElement.removeAttribute('data-locked');
+    $('resetDemo').textContent = 'Start over'; $('signOut').hidden = false;
+    document.querySelector('.brand-text small').textContent = 'Your test clinic · nothing is sent';
+    boot();
   }
-  routeFromHash();
+  // Signing out keeps the clinic; signing in again in this browser brings it back.
+  function signOut() { if (S) persist(); try { localStorage.removeItem(SESSION); } catch (e) { /* nothing kept */ } location.reload(); }
+
+  function boot() {
+    S = loadStore();
+    if (!S) { S = freshStore(); persist(); }
+    // Intakes are all done online now; a demo saved while one was still marked "on paper" gets the patient's online intake.
+    if (S.patients.some(p => p.intake.status === 'paper')) {
+      const fresh = seed();
+      S.patients.forEach(p => {
+        if (p.intake.status !== 'paper') return;
+        const f = fresh.patients.find(x => x.id === p.id);
+        p.intake = f ? f.intake : { status: 'none' };
+        if (f && !p.safetyAck) p.safetyAck = f.safetyAck;
+        // Their consult letter gets the intake history it now has.
+        S.letters.forEach(l => { const v = S.visits.find(x => x.id === l.visitId); if (l.pid === p.id && v && v.type === 'consult') l.text = letterText(p, v); });
+      });
+      persist();
+    }
+    S.visits.forEach(v => { if (v.status === 'recording') v.status = v.transcript && v.transcript.length ? 'recorded' : 'scheduled'; });
+    S.faxes.forEach(finishFax);
+    $('role').value = role; $('roleM').value = role;
+    syncClaudeBtn();
+    buildNav();
+    window.addEventListener('hashchange', routeFromHash);
+    if (window.claude && typeof window.claude.use === 'function') {
+      window.claude.use('sample').then(fn => { sampleFn = fn || null; sampleState = fn ? 'ready' : 'off'; softRender(); }, () => { sampleFn = null; sampleState = 'off'; softRender(); });
+    }
+    routeFromHash();
+  }
+  if (!trial) boot();
+  else if (signedInAccount()) enterTrial(signedInAccount());
+  else showSignIn();
 })();
 </script>
 </body>
