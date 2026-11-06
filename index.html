@@ -227,42 +227,222 @@ html[data-locked] #shell{display:none}
 .day-main .who small .danger-t{color:var(--danger)}
 .day-main:hover b{color:var(--accent-text)}
 
-/* visits: the list of visits beside the open one, like an AI scribe */
-.visits{display:grid;gap:20px;grid-template-columns:minmax(0,1fr);align-items:start}
-@media (min-width:1000px){.visits{grid-template-columns:270px minmax(0,1fr)}}
+/* the patient list beside the open profile */
 .session-list{padding:12px;display:grid;gap:8px}
 .session-list > .card-h{margin:2px 4px 2px}
-.day-nav{display:flex;align-items:center;gap:6px}
-.day-when{flex:1 1 auto;min-width:0;display:grid;justify-items:center;text-align:center;line-height:1.25}
-.day-when b{font-size:15px}
-.day-when small{font-size:11px;color:var(--muted)}
-.day-col > .btn{justify-self:start}
-.sl-group{display:grid;gap:2px}
-.sl-group h3{font-size:11px;font-weight:600;color:var(--muted);margin:8px 10px 4px}
+.sl-groups{display:grid;gap:8px}
 .sl-item{display:grid;gap:1px;width:100%;text-align:left;border:0;background:transparent;padding:8px 10px;border-radius:10px;cursor:pointer;color:inherit;font:inherit;letter-spacing:inherit}
 .sl-item:hover{background:var(--fill-3)}
 .sl-item[aria-current="true"]{background:var(--accent);color:#FFFFFF}
-.sl-item[aria-current="true"] small,.sl-item[aria-current="true"] .chip-s,.sl-item[aria-current="true"] .lock{color:rgba(255,255,255,.9)}
-.sl-item[aria-current="true"] .chip-s::before{background:#FFFFFF}
+.sl-item[aria-current="true"] small{color:rgba(255,255,255,.9)}
 .sl-top{display:flex;align-items:center;justify-content:space-between;gap:6px;min-width:0}
 .sl-top b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sl-item small{font-size:12px;color:var(--muted)}
-.sl-item .lock{color:var(--muted)}
-/* the visit list: search, a closed Upcoming group, and a one-line summary under each name */
-.sl-groups{display:grid;gap:8px}
-.sl-toggle{display:flex;align-items:center;gap:4px;border:0;background:none;color:var(--muted);font:inherit;font-size:11px;font-weight:600;padding:6px 10px 2px;cursor:pointer}
-.sl-toggle:hover{color:var(--ink)}
-.sl-toggle .chev{width:12px;height:12px;transition:transform .15s}
-.sl-toggle[aria-expanded="true"] .chev{transform:rotate(90deg)}
-@media (prefers-reduced-motion: reduce){.sl-toggle .chev{transition:none}}
-.sl-group.shut:not(.searching) .sl-item{display:none}
-.sl-top .sl-when{margin-left:auto;flex:0 0 auto}
 .sl-sub{display:flex;align-items:center;gap:8px;min-width:0}
 .sl-sub small{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sl-item[aria-current="true"] .sl-when{color:rgba(255,255,255,.85)}
 @media (max-width:999px){.session-list{max-height:320px;overflow:auto}}
-.session{display:grid;gap:16px;min-width:0}
-.session-head{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:10px 16px}
+
+/* the Day tab, laid out like Jane's: the day's schedule down the left and the chosen patient's file beside it */
+.dayv{display:grid;gap:20px;grid-template-columns:minmax(0,1fr);align-items:start}
+@media (min-width:1000px){.dayv{grid-template-columns:250px minmax(0,1fr)}.dayrail{position:sticky;top:0}}
+@media (max-width:999px){.dayv.has-sel .dayrail{display:none}}
+.dayrail{display:grid;gap:10px;padding:14px 12px 12px}
+.dr-date{font-size:21px;font-weight:300;letter-spacing:-.01em;text-align:center;line-height:1.2}
+.dr-who{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;background:var(--surface-2)}
+.avatar.sm{width:34px;height:34px;font-size:13px}
+.dr-who-t{flex:1 1 auto;min-width:0;display:grid;line-height:1.3;font-size:12px}
+.dr-who-t b{font-size:12px;color:var(--accent-text)}
+.dr-who-t small{font-size:11px;color:var(--muted)}
+.dr-n{min-width:24px;height:22px;padding:0 7px;border-radius:11px;background:var(--fill-2);font-size:12px;font-weight:600;display:grid;place-items:center;font-variant-numeric:tabular-nums}
+.dr-scroll{max-height:calc(100vh - 300px);min-height:220px;overflow-y:auto;overscroll-behavior:contain}
+@media (max-width:999px){.dr-scroll{max-height:none}}
+.dr-grid{display:grid;grid-template-columns:44px minmax(0,1fr);padding:8px 0}
+.dr-gut{position:relative}
+.dr-gut span{position:absolute;right:7px;transform:translateY(-50%);font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.dr-col{position:relative;border-left:1px solid var(--line);background-image:repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--hr) - 1px), var(--line) calc(var(--hr) - 1px), var(--line) var(--hr))}
+.dr-appt{position:absolute;left:3px;right:2px;z-index:2;display:grid;align-content:start;gap:1px;padding:3px 6px 3px 9px;border:0;border-radius:6px;background:color-mix(in srgb, var(--c) 15%, var(--surface));color:color-mix(in srgb, var(--c) 55%, var(--ink));text-align:left;font:inherit;font-size:11px;line-height:1.25;overflow:hidden;cursor:pointer;letter-spacing:0}
+.dr-appt::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--c)}
+.dr-appt:hover{background:color-mix(in srgb, var(--c) 24%, var(--surface))}
+.dr-appt.consult{--c:var(--t-consult)}.dr-appt.followup{--c:var(--t-follow)}.dr-appt.medreview{--c:var(--t-med)}
+.dr-appt.arrived,.dr-appt.inprogress{background:color-mix(in srgb, var(--c) 30%, var(--surface))}
+.dr-appt.done{opacity:.6}
+.dr-appt.noshow{opacity:.5}
+.dr-appt.noshow b{text-decoration:line-through}
+.dr-appt.sel{box-shadow:0 0 0 2px var(--c);z-index:4}
+.dr-appt b,.dr-appt small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dr-appt small{font-size:11px;opacity:.85}
+.dr-t{display:flex;align-items:center;gap:4px;white-space:nowrap;overflow:hidden;font-variant-numeric:tabular-nums;opacity:.9}
+.dr-t .lock,.dr-t .tick{width:11px;height:11px;flex:0 0 auto;margin-left:auto;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.dr-now{position:absolute;left:0;right:0;height:2px;background:var(--red);z-index:3}
+.dr-now span{position:absolute;right:calc(100% + 2px);top:50%;transform:translateY(-50%);padding:1px 4px;border-radius:5px;background:var(--red);color:#FFFFFF;font-size:9px;font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
+.dr-foot{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.dr-foot .date-pick{width:auto;flex:1 1 120px;min-width:0}
+.day-empty{display:grid;justify-items:center;gap:8px;padding:48px 24px;text-align:center}
+.day-empty-ico{width:56px;height:56px;fill:none;stroke:var(--faint);stroke-width:1.2;stroke-linecap:round;stroke-linejoin:round}
+.day-empty h2{font-size:17px;font-weight:600}
+.day-chart{min-width:0}
+.pt-head.in-day .avatar{width:44px;height:44px;font-size:16px}
+.pt-head.in-day h1{font-size:26px}
+
+/* the chart: entries newest first, each a card with a preview that opens to the whole entry */
+.chart{display:grid;gap:12px;min-width:0}
+.ch-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}
+.ch-head h2{font-size:22px;font-weight:700;letter-spacing:-.02em}
+.ch-tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.ch-tools .search{flex:1 1 200px}
+.ch-tools .filter,.ce-bar .filter,.pad-size .filter{width:auto;height:28px;font-size:12px;padding-right:30px}
+.ch-alert{display:flex;align-items:flex-start;gap:8px;padding:10px 14px;border-radius:12px;background:var(--danger-soft);color:var(--danger);font-size:13px}
+.ch-alert b{flex:0 0 auto}
+.ch-alert span{color:var(--ink)}
+.ch-start{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;padding:12px 16px;border-radius:12px;background:var(--accent-soft)}
+.ch-start .grow{flex:1 1 260px;display:grid;gap:2px;min-width:0}
+.ch-start small{font-size:12px;color:var(--muted)}
+.ch-list{display:grid;gap:10px}
+.ce{background:var(--surface);border-radius:12px;box-shadow:var(--shadow-sm),0 0 0 .5px var(--line);min-width:0}
+.ce-h{display:flex;align-items:center;gap:6px;padding:7px 8px;background:var(--surface-2);border-radius:12px 12px 0 0;border-bottom:1px solid var(--line)}
+.ce-star{flex:0 0 auto;width:28px;height:28px;display:grid;place-items:center;border:0;border-radius:7px;background:none;color:var(--faint);cursor:pointer}
+.ce-star:hover{background:var(--fill-3);color:var(--orange)}
+.ce-star.on{color:var(--orange)}
+.ce-star.on .ico{fill:currentColor}
+.ce-title{flex:1 1 auto;min-width:0;border:0;background:none;padding:4px 2px;text-align:left;font:inherit;font-size:13px;color:var(--ink);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ce-title b{font-weight:600}
+.ce-meta{flex:0 0 auto;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.ce-appt,.ce-lock{display:inline-flex;color:var(--muted)}
+.ce-draft{display:inline-flex;align-items:center;gap:4px;padding:1px 8px;border-radius:6px;background:var(--caution-soft);color:var(--caution);font-size:11px;font-weight:600}
+.ce-draft .lock{width:11px;height:11px}
+.ce-by{color:var(--ink);font-weight:500;white-space:nowrap}
+@media (max-width:560px){.ce-by,.ce-appt{display:none}}
+.ce-prev{margin:0 0 12px;padding:10px 14px 0;font-size:13px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;cursor:pointer}
+.ce-prev:hover{color:var(--accent-text)}
+.ce-body{display:grid;gap:14px;padding:14px 16px 16px;min-width:0}
+.ce-capture{display:grid;gap:8px;padding:12px 14px;border-radius:12px;background:var(--surface-2)}
+.ce-capture-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 14px}
+.ce-capture-t{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600}
+.ce-ai{display:grid;gap:8px}
+.ce-appt-l{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0;font-size:12px;color:var(--muted)}
+.ce-appt-l b{color:var(--ink);font-weight:600}
+.ce-bar{position:sticky;bottom:calc(-1 * var(--main-pad-b, 0px));z-index:3;display:grid;gap:6px;margin:4px -16px -16px;padding:10px 16px 12px;background:var(--surface);border-top:1px solid var(--line);border-radius:0 0 12px 12px}
+.ce-bar-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}
+.ce-check{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink);cursor:pointer}
+.ce-check input{width:15px;height:15px;margin:0;accent-color:var(--accent)}
+.tp-build .ce-bar{margin:4px -20px -18px;padding:10px 20px 12px}
+@media (max-width:700px){.ce-bar{position:static}}
+
+/* items in an entry: a bold title with its actions on the right, then what's in it */
+.it{display:grid;gap:8px;min-width:0}
+.it-h{display:flex;align-items:center;gap:8px;min-height:24px}
+.it-t{flex:1 1 auto;display:flex;align-items:center;gap:8px;margin:0;font-size:13px;font-weight:600}
+.it-t .tag{font-size:11px;font-weight:500;padding:1px 8px;border-radius:6px;background:var(--accent-soft);color:var(--accent-text)}
+.it-head{flex:1 1 auto;margin:6px 0 0;font-size:15px;font-weight:700;letter-spacing:-.01em}
+.it-acts{display:inline-flex;gap:3px;margin-left:auto;opacity:0;transition:opacity .12s}
+.it:hover > .it-h .it-acts,.it:focus-within > .it-h .it-acts{opacity:1}
+@media (hover:none){.it-acts{opacity:1}}
+@media (prefers-reduced-motion: reduce){.it-acts{transition:none}}
+.it-act{width:26px;height:26px;display:grid;place-items:center;border:0;border-radius:50%;background:var(--fill-2);color:var(--muted);cursor:pointer}
+.it-act:hover{background:var(--fill);color:var(--ink)}
+.it-act.danger:hover{background:var(--danger-soft);color:var(--danger)}
+.it-act .ico{width:14px;height:14px}
+.it-instr{display:flex;align-items:flex-start;gap:8px;margin:0;padding:8px 12px;border-radius:10px;background:var(--fill-3);font-size:12px;color:var(--muted)}
+.it-checks{display:flex;flex-wrap:wrap;gap:6px 18px}
+.it-check{display:inline-flex;align-items:center;gap:7px;font-size:13px;cursor:pointer}
+.it-check input{width:16px;height:16px;margin:0;accent-color:var(--accent)}
+.it-checks-r{display:flex;flex-wrap:wrap;gap:4px 18px;margin:0;padding:0;list-style:none;font-size:13px;color:var(--muted)}
+.it-checks-r li{display:inline-flex;align-items:center;gap:6px}
+.it-checks-r li.on{color:var(--ink)}
+.it-checks-r li.on .ico{color:var(--accent)}
+.it-select{max-width:320px}
+.it-scale{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.it-scale input[type=range]{flex:1 1 200px;max-width:360px;accent-color:var(--accent)}
+.it-scale input.unset{opacity:.45}
+.it-scale-v{min-width:90px;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
+.it-scale-r{display:flex;align-items:center;gap:10px;font-size:13px}
+.it-meter{position:relative;width:160px;height:6px;border-radius:3px;background:var(--fill-2);overflow:hidden}
+.it-meter i{position:absolute;inset:0 auto 0 0;border-radius:3px;background:var(--accent)}
+.it-vitals{display:flex;flex-wrap:wrap;gap:12px 20px}
+.it-vital{display:grid;gap:4px;font-size:12px;color:var(--muted)}
+.it-vin{display:inline-flex;align-items:center;gap:5px;color:var(--ink)}
+.it-vin input{height:30px;padding:0 8px;border:0;border-radius:7px;background:var(--field);box-shadow:inset 0 0 0 1px var(--line-2);color:var(--ink);font:inherit;font-size:13px;font-variant-numeric:tabular-nums}
+.it-vin input:focus{outline:none;box-shadow:inset 0 0 0 1px var(--accent),0 0 0 3px var(--focus)}
+.it-vin b{font-size:15px;font-variant-numeric:tabular-nums}
+.it-vin small{font-size:11px;color:var(--muted)}
+.it-design{pointer-events:none}
+.plan-list{display:grid;gap:8px}
+.plan-read{margin:0;padding-left:20px;display:grid;gap:4px;font-size:13px;line-height:1.5}
+
+/* drawing: the body diagram, sketches and signatures, on a white page in either theme */
+.pad{display:grid;gap:8px;max-width:100%}
+.pad-small .pad-canvas{max-width:340px}
+.pad-medium .pad-canvas{max-width:520px}
+.pad-large .pad-canvas{max-width:none}
+.pad-main{display:flex;align-items:flex-start;gap:8px}
+.pad-tools{display:grid;gap:3px;padding:4px;border-radius:10px;background:var(--fill-3)}
+.pad-tool{width:30px;height:30px;display:grid;place-items:center;border:0;border-radius:7px;background:none;color:var(--ink);cursor:pointer}
+.pad-tool:hover{background:var(--fill-2)}
+.pad-tool[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.pad-sep{height:1px;margin:2px 4px;background:var(--line)}
+.pad-dot{display:block;border-radius:50%;background:currentColor}
+.pad-swatch{display:block;width:14px;height:14px;border-radius:50%;box-shadow:0 0 0 1px var(--line-2)}
+.pad-canvas{flex:1 1 auto;min-width:0;border-radius:10px;background:#FFFFFF;box-shadow:inset 0 0 0 1px var(--line-2)}
+.pad-svg{display:block;width:100%;height:auto;touch-action:none;user-select:none;-webkit-user-select:none}
+.pad.edit .pad-svg{cursor:crosshair}
+.pad-art{fill:none;stroke:#8E8E93;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.pad-art .faint{stroke:#C7C7CC}
+.pad-art text{fill:#8E8E93;stroke:none;font-size:13px;text-anchor:middle;font-family:var(--font-ui)}
+.pad-ink path{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.pad-pins circle{fill:#0071E3;stroke:#FFFFFF;stroke-width:2}
+.pad-pins text{fill:#FFFFFF;font-size:12px;font-weight:700;text-anchor:middle;font-family:var(--font-ui)}
+.pad-under{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.pad-size{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.pad-notes{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.pad-notes li{display:flex;align-items:flex-start;gap:8px;font-size:13px}
+.pad-notes .nf-field{flex:1 1 auto}
+.pad-num{flex:0 0 auto;width:22px;height:22px;margin-top:5px;border-radius:50%;background:#0071E3;color:#FFFFFF;font-size:11px;font-weight:700;display:grid;place-items:center}
+.pad:not(.edit) .pad-num{margin-top:0}
+
+/* templates, the item picker and the template library */
+.tp-tbl td b{display:block;font-weight:600}
+.tp-by{display:block;font-size:12px;color:var(--muted)}
+.tp-act{text-align:right}
+.tp-name{display:flex;align-items:center;gap:6px}
+.tp-name-l{display:flex;align-items:center;justify-content:space-between}
+.tp-parts{display:grid;margin:0;padding:0;list-style:none}
+.tp-parts li{display:flex;align-items:center;gap:10px;padding:7px 4px;border-bottom:1px solid var(--line);font-size:13px}
+.tp-parts li:last-child{border-bottom:0}
+.tp-parts li span{flex:1 1 auto}
+.tp-parts li small{font-size:12px;color:var(--muted)}
+.tp-parts .ico{color:var(--accent-text)}
+.tp-build{display:grid;gap:14px}
+.switch{appearance:none;-webkit-appearance:none;position:relative;flex:0 0 auto;width:38px;height:22px;margin:0;border-radius:11px;background:var(--fill);cursor:pointer;transition:background .15s;vertical-align:middle}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#FFFFFF;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .15s}
+.switch:checked{background:var(--green)}
+.switch:checked::after{transform:translateX(16px)}
+.switch:disabled{opacity:.5;cursor:default}
+.switch:focus-visible{outline:none;box-shadow:0 0 0 3px var(--focus)}
+@media (prefers-reduced-motion: reduce){.switch,.switch::after{transition:none}}
+.ai-top{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.ai-top .search{flex:1 1 180px}
+.ai-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
+.ai-card{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:0;border-radius:10px;background:var(--fill-3);color:var(--ink);text-align:left;font:inherit;cursor:pointer}
+.ai-card:hover,.ai-card:focus-visible{background:var(--accent-soft);outline:none}
+.ai-card .ico{width:20px;height:20px;margin-top:1px;color:var(--accent-text)}
+.ai-card span{display:grid;gap:2px;min-width:0}
+.ai-card b{font-size:13px}
+.ai-card small{font-size:12px;line-height:1.35;color:var(--muted)}
+.lib{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+@media (min-width:700px){.lib{grid-template-columns:260px minmax(0,1fr)}}
+.lib-list{display:grid;gap:4px;align-content:start;max-height:50vh;overflow:auto}
+.lib-item{display:grid;gap:2px;padding:8px 10px;border:0;border-radius:9px;background:none;color:var(--ink);text-align:left;font:inherit;cursor:pointer}
+.lib-item:hover{background:var(--fill-3)}
+.lib-item[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
+.lib-item small{font-size:12px;color:var(--muted)}
+.lib-item[aria-selected="true"] small{color:rgba(255,255,255,.85)}
+.lib-prev{display:grid;gap:10px;align-content:start;padding:12px 14px;border-radius:12px;background:var(--surface-2)}
+.lib-prev h3{font-size:15px;font-weight:600}
+.lib-prev > .btn{justify-self:start}
+.more-list.grouped{max-height:min(60vh,520px);overflow:auto;min-width:260px}
+.more-list.grouped button{display:grid;gap:1px}
+.more-list.grouped small{font-size:11px;opacity:.75}
+
 /* The visit header, laid out like Heidi: who and when on the left, the capture controls on the right. */
 .title-line{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}
 .rec-ctl{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
@@ -295,7 +475,6 @@ html[data-locked] #shell{display:none}
 .file-chip button{border:0;background:none;color:var(--muted);width:20px;height:20px;border-radius:50%;cursor:pointer;font-size:14px;line-height:1}
 .file-chip button:hover{background:var(--fill-2);color:var(--ink)}
 .btn-icon{padding:0;width:28px}
-.session > .tabs{margin-bottom:0}
 .ctx-quote{font-size:13px}
 .ctx-list{margin:0;padding-left:18px;display:grid;gap:4px;font-size:13px}
 .signed-tag{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--ok)}
@@ -825,6 +1004,7 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
           <button type="button" role="menuitemradio" data-role="doctor" aria-checked="true">Dr. Lee, psychiatrist</button>
           <button type="button" role="menuitemradio" data-role="admin" aria-checked="false">Sam, clinic admin</button>
           <hr class="acct-sep">
+          <button id="tplBtn" type="button" role="menuitem">Templates</button>
           <button id="claudeBtn" type="button" role="menuitem" hidden>Connect Claude</button>
           <button id="resetDemo" type="button" role="menuitem">Reset demo</button>
           <button id="signOut" type="button" role="menuitem" hidden>Sign out</button>
@@ -2593,7 +2773,8 @@ Psychiatrist`;
   /* ---------- the demo practice ---------- */
   function intakeFromDemo(d, doneAt) { const T = {}; Object.keys(d.off).forEach(k => { T[k] = doneAt + d.off[k]; }); return { A: JSON.parse(JSON.stringify(d.A)), T, started: doneAt + d.startOff }; }
   function alexIntake(doneAt) { const end = Math.max(...Object.values(SAMPLE_T)); const T = {}; Object.keys(SAMPLE_T).forEach(k => { T[k] = doneAt + SAMPLE_T[k] - end; }); return { A: JSON.parse(JSON.stringify(SAMPLE_A)), T, started: doneAt + SAMPLE_START - end }; }
-  const emptyClinic = () => ({ v: 1, day: ymd(clinicDay), patients: [], appts: [], visits: [], letters: [], faxes: [], rx: [], tasks: [], events: [], waitlist: [] });
+  // `entries` are chart entries other than visit notes; `templates` are what new chart entries are made from (chart.js).
+  const emptyClinic = () => ({ v: 1, day: ymd(clinicDay), patients: [], appts: [], visits: [], letters: [], faxes: [], rx: [], tasks: [], events: [], waitlist: [], entries: [], templates: starterTemplates() });
   function seed() {
     const s = emptyClinic();
     const ev = (pid, t, text) => s.events.push({ at: t, pid, text });
@@ -2685,6 +2866,9 @@ Psychiatrist`;
       task('t-richard-old', "Sign Richard Fraser's consult note", 'richard', 'doctor', at(-35, 17, 0), { done: true, doneAt: at(-35, 12, 40) }),
     );
     s.waitlist.push({ id: 'w-chloe', pid: 'chloe', note: 'Would take an earlier consult if one opens', since: at(-5, 10, 15) });
+    // A chart entry that isn't a visit note: a phone check-in a week after Mei Lin Chen started sertraline.
+    const phone = s.templates.find(t => t.id === 'tpl-phone'), filled = { 'Spoke with': ['The patient', 'A family member'], 'Mood today': 5, 'What was talked about': 'Her son Kevin interpreted. Nausea in the first week, now settling. Sleeping a little better. She has moved up to 50 mg as planned.', Safety: ['No thoughts of self-harm', 'Has the 9-8-8 number'], 'Next steps': 'Keep sertraline 50 mg. Follow-up visit as booked.' };
+    s.entries.push({ id: 'e-meilin-call', pid: 'meilin', at: at(-34, 11, 20), title: phone.name, by: CLINIC.doctor, status: 'signed', signedAt: at(-34, 11, 32), items: phone.items.map(it => Object.assign(copyItem(it), { value: filled[it.label] })) });
     ev('alex', at(-9, 11, 24), 'Referral received by fax from Dr. Sam Ortega'); ev('alex', at(-8, 9, 4), 'New consult booked for ' + fmtDay(at(0, 10, 0)) + ', 10:00 a.m. (video)'); ev('alex', at(-8, 9, 5), 'Intake link sent by text'); ev('alex', at(-6, 20, 14), 'Finished the intake questionnaire; safety answers flagged'); ev('alex', at(-5, 9, 10), 'Safety follow-up: Reached them; safe for now (she has the 9-8-8 number)'); ev('alex', at(-2, 10, 0), 'Reminder text sent');
     ev('meilin', at(-63, 14, 2), 'Referral received by fax from Dr. Priya Raman'); ev('meilin', at(-62, 10, 0), 'Intake link sent by text'); ev('meilin', at(-50, 20, 5), 'Finished the intake questionnaire (with her son)'); ev('meilin', at(-49, 9, 25), 'Safety follow-up: Reached them; safe for now (her son interpreted)'); ev('meilin', at(-42, 15, 10), 'Consult note signed'); ev('meilin', at(-42, 16, 5), 'Consult letter faxed to Dr. Raman'); ev('meilin', at(-42, 16, 8), 'Prescription faxed to Fraser Pharmacy'); ev('meilin', at(-1, 16, 41), "Prescription renewal fax didn't go through (no answer)");
     ev('harjinder', at(-14, 9, 40), 'Referral received by fax from Dr. Gurinder Brar'); ev('harjinder', at(-13, 10, 0), 'Intake link sent by text'); ev('harjinder', at(-5, 19, 30), 'Finished the intake questionnaire (with his daughter)');
@@ -2711,7 +2895,9 @@ Psychiatrist`;
   const readRole = () => { try { return localStorage.getItem(KEY + ':role') === 'admin' ? 'admin' : 'doctor'; } catch (e) { return 'doctor'; } };
   let role = readRole();
   const roleName = () => (role === 'doctor' ? 'Dr. Lee' : 'Sam (admin)');
-  const ui = { view: 'schedule', pid: null, tab: 'profile', visitId: null, letterId: null, inboxTab: 'in', inboxSel: null, day: clinicDay, schedView: 'day', apptSel: null, sessionTab: null, intakeTab: 'ai', taskScope: 'mine', filter: '' };
+  const ui = { view: 'schedule', pid: null, tab: 'profile', visitId: null, letterId: null, inboxTab: 'in', inboxSel: null, day: clinicDay, schedView: 'day', apptSel: null, sessionTab: null, intakeTab: 'ai', taskScope: 'mine', filter: '',
+    // The Day tab and the chart (chart.js): the chosen appointment, its file's tab, which entries are open, the chart's search and filters, and the template being built.
+    chartDay: null, dayAppt: null, dayPid: null, dayTab: 'charts', chartOpen: {}, chartQ: '', chartBy: '', chartPinned: false, chartFilter: 'all', focusEntry: null, tplTab: 'charts', tplDraft: null };
   const P = id => S.patients.find(p => p.id === id);
   const logEvent = (pid, text, t) => S.events.push({ at: t || Date.now(), pid, text });
 
@@ -3485,7 +3671,7 @@ Psychiatrist`;
   function routeFromHash() {
     const t = (location.hash || '').slice(1);
     if (/^p-[A-Za-z0-9_-]+$/.test(t) && P(t.slice(2))) { if (ui.view !== 'patient' || ui.pid !== t.slice(2)) Object.assign(ui, { pid: t.slice(2), tab: ui.pid === t.slice(2) ? ui.tab : 'profile', letterId: null }); ui.view = 'patient'; }
-    else ui.view = t === 'home' ? 'home' : NAV.some(([k]) => k === t) ? t : 'schedule';
+    else ui.view = t === 'home' || t === 'templates' ? t : NAV.some(([k]) => k === t) ? t : 'schedule';
     renderKeepScroll = false; render();
   }
   function pageHead(title, subtitle, actions) {
@@ -3886,15 +4072,17 @@ Psychiatrist`;
   }
 
   /* ---------- the patient profile: a banner with what matters for safety, then tabs named the way scheduler users know them ---------- */
-  const PTABS = [['profile', 'Profile'], ['appts', 'Appointments'], ['intake', 'Intake'], ['charts', 'Charts'], ['letters', 'Letters & fax'], ['rx', 'Prescriptions'], ['docs', 'Documents']];
+  const PTABS = [['profile', 'Profile'], ['charts', 'Chart'], ['appts', 'Appointments'], ['intake', 'Intake'], ['letters', 'Letters & fax'], ['rx', 'Prescriptions'], ['docs', 'Documents']];
   VIEWS.patient = function () {
     const p = P(ui.pid);
     if (!p) { ui.view = 'patients'; return VIEWS.patients(); }
     return patientsView(p);
   };
-  // The profile: a header like Jane's, with the patient's initials, a row of counts and the tabs, then the tab.
-  function profileView(p) {
-    if (!PTABS.some(([k]) => k === ui.tab)) ui.tab = 'profile';
+  // The profile: a header like Jane's, with the patient's initials, a row of counts and the tabs, then the tab. On the
+  // Day tab (`ctx.day`) it sits beside the day's schedule and opens on the Chart, with its tab kept apart.
+  function profileView(p, ctx) {
+    const inDay = !!(ctx && ctx.day), tk = inDay ? 'dayTab' : 'tab';
+    if (!PTABS.some(([k]) => k === ui[tk])) ui[tk] = inDay ? 'charts' : 'profile';
     const pg = h('div', { class: 'pt-pane stack gap-l' });
     const a = nextAppt(p), todayAppt = a && startOfDay(a.start) === clinicDay ? a : null;
     const alerts = [];
@@ -3902,7 +4090,7 @@ Psychiatrist`;
     if (p.allergies && !/^(none|not sure)/i.test(p.allergies)) alerts.push(chip('Allergy: ' + p.allergies, 'danger'));
     if (p.interpreter) alerts.push(chip('Interpreter: ' + p.interpreter, 'info'));
     const visiting = todayAppt && S.visits.some(v => v.id === todayAppt.visitId && v.status !== 'scheduled');
-    const primary = role === 'doctor' && todayAppt ? btn(visiting ? 'Continue visit' : 'Start visit', () => startVisit(todayAppt), 'primary') : btn('Book appointment', () => openBooking({ pid: p.id }), 'primary');
+    const primary = inDay ? null : role === 'doctor' && todayAppt ? btn(visiting ? 'Continue visit' : 'Start visit', () => startVisit(todayAppt), 'primary') : btn('Book appointment', () => openBooking({ pid: p.id }), 'primary');
     const more = moreMenu([
       role === 'doctor' && todayAppt ? ['Book appointment', () => openBooking({ pid: p.id })] : null,
       role === 'doctor' && !todayAppt ? ['New visit (not on the schedule)', () => openNewVisit(p.id)] : null,
@@ -3915,17 +4103,17 @@ Psychiatrist`;
     const seen = S.visits.filter(v => v.pid === p.id && v.status === 'signed').sort((x, y) => y.start - x.start);
     const counts = [['Upcoming', mine.filter(x => x.start > now && x.status !== 'cancelled').length], ['Notes signed', seen.length], ['No-shows', mine.filter(x => x.status === 'noshow').length], ['Last seen', seen.length ? fmtDay(seen[0].start) : 'Not yet']];
     const initials = p.name.split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase();
-    pg.append(h('header', { class: 'pt-head' },
-      h('div', { class: 'phone-back' }, h('button', { class: 'back', type: 'button', onclick: () => go('patients') }, 'Patients')),
+    pg.append(h('header', { class: 'pt-head' + (inDay ? ' in-day' : '') },
+      h('div', { class: 'phone-back' }, inDay ? h('button', { class: 'back', type: 'button', onclick: () => { ui.dayAppt = null; ui.dayPid = null; render(); } }, 'Day') : h('button', { class: 'back', type: 'button', onclick: () => go('patients') }, 'Patients')),
       h('div', { class: 'pt-top' },
         h('span', { class: 'avatar', 'aria-hidden': 'true' }, initials),
         h('div', { class: 'pt-name' }, h('h1', null, p.name),
           h('p', { class: 'pt-meta' }, [pron(p), ageOf(p) != null ? ageOf(p) + ' years' : null, 'DOB ' + fmtDate(p.dob), 'PHN ending ' + p.phnLast, p.lang !== 'en' ? 'Speaks ' + LANGS[p.lang] : null].filter(Boolean).join(' · '))),
         h('div', { class: 'head-actions' }, more, primary)),
       alerts.length ? h('div', { class: 'pt-alerts' }, alerts) : null,
-      h('dl', { class: 'pt-counts' }, counts.map(([k, v]) => h('div', null, h('dt', null, k), h('dd', null, String(v))))),
-      h('nav', { class: 'ptabs', role: 'tablist', 'aria-label': 'Patient profile' }, PTABS.map(([k, l]) => h('button', { type: 'button', role: 'tab', 'aria-selected': String(ui.tab === k), onclick: () => { ui.tab = k; ui.editing = false; renderKeepScroll = true; render(); } }, l, k === 'intake' && needsCall(p) ? h('span', { class: 'dot red', title: 'Safety follow-up needed' }) : null)))));
-    pg.append({ profile: tabProfile, appts: tabAppts, intake: tabIntake, charts: tabCharts, letters: tabLetters, rx: tabRx, docs: tabDocs }[ui.tab](p));
+      inDay ? null : h('dl', { class: 'pt-counts' }, counts.map(([k, v]) => h('div', null, h('dt', null, k), h('dd', null, String(v))))),
+      h('nav', { class: 'ptabs', role: 'tablist', 'aria-label': 'Patient profile' }, PTABS.map(([k, l]) => h('button', { type: 'button', role: 'tab', 'aria-selected': String(ui[tk] === k), onclick: () => { ui[tk] = k; ui.editing = false; renderKeepScroll = true; render(); } }, l, k === 'intake' && needsCall(p) ? h('span', { class: 'dot red', title: 'Safety follow-up needed' }) : null)))));
+    pg.append({ profile: tabProfile, appts: tabAppts, intake: tabIntake, charts: pp => chartTab(pp, ctx), letters: tabLetters, rx: tabRx, docs: tabDocs }[ui[tk]](p));
     return pg;
   }
   const kvRows = rows => rows.filter(r => r[1]).flatMap(([k, v, cls]) => [h('dt', null, k), h('dd', cls ? { class: cls } : null, v)]);
@@ -3942,7 +4130,7 @@ Psychiatrist`;
       h('section', { class: 'card' }, h('h2', null, 'Activity'),
         events.length ? h('ul', { class: 'timeline' }, events.map(e => h('li', null, h('time', null, fmtDay(e.at)), h('span', null, e.text)))) : h('p', { class: 'empty small' }, 'Nothing yet.')));
     const right = h('div', { class: 'stack gap-l' },
-      h('section', { class: 'card' }, h('div', { class: 'card-h' }, h('h2', null, 'Intake'), btn('Open', () => { ui.tab = 'intake'; render(); }, 'quiet small')),
+      h('section', { class: 'card' }, h('div', { class: 'card-h' }, h('h2', null, 'Intake'), btn('Open', () => openTab(p, 'intake'), 'quiet small')),
         h('div', { class: 'stack' },
           h('div', { class: 'row' }, intakeChip(p), p.intake.completedAt ? h('span', { class: 'hint' }, sentence(`Finished ${whenIn(p.intake.completedAt)}`)) : null),
           p.intake.status === 'done' ? h('div', { class: 'score-row' }, scoreEl(sc.phq, 'PHQ-9', 27, phqBand, ['moderately severe', 'severe'], ['moderate']), scoreEl(sc.gad, 'GAD-7', 21, gadBand, ['severe'], ['moderate'])) : null,
@@ -3962,16 +4150,6 @@ Psychiatrist`;
       h('section', { class: 'card' }, h('div', { class: 'card-h' }, h('h2', null, 'Today and upcoming'), btn('Book appointment', () => openBooking({ pid: p.id }), 'primary small')),
         upcoming.length ? h('div', { class: 'list' }, upcoming.map(row)) : h('p', { class: 'empty small' }, 'Nothing booked.')),
       past.length ? h('section', { class: 'card' }, h('h2', null, 'Past'), h('div', { class: 'list' }, past.map(row))) : null);
-  }
-  // Charts: each visit's note, the way a scheduler lists chart entries; a lock means signed.
-  function tabCharts(p) {
-    const visits = S.visits.filter(v => v.pid === p.id && (v.status !== 'scheduled' || startOfDay(v.start) === clinicDay)).sort((x, y) => y.start - x.start);
-    const row = v => h('button', { class: 'row-btn', type: 'button', onclick: () => go('visits', { visitId: v.id, sessionTab: null }) },
-      h('span', { class: 'li-main' }, h('b', null, v.status === 'signed' ? lockIcon() : null, TYPES[v.type].label), h('small', null, `${fmtDay(v.start)}, ${fmtTime(v.start)} · ${MODES[v.mode]}${v.status === 'signed' ? ' · signed ' + fmtDay(v.signedAt) : ''}`)),
-      chip(VISIT_STATUS[v.status][0], VISIT_STATUS[v.status][1]));
-    return h('section', { class: 'card' }, h('div', { class: 'card-h' }, h('h2', null, 'Chart entries'), role === 'doctor' ? btn('New visit', () => openNewVisit(p.id), 'small') : null),
-      visits.length ? h('div', { class: 'list' }, visits.map(row)) : h('p', { class: 'empty small' }, 'No chart entries yet.'),
-      h('p', { class: 'hint' }, 'Each entry opens on its day in the Day tab, with its recording, transcript and note.'));
   }
   // A score the way a health app shows a reading: the number, the scale, and the band in colour when it matters.
   function scoreEl(v, label, max, band, hi, mid) { const b = v != null ? band(v) : null; return h('div', { class: 'score' }, h('b', null, v != null ? String(v) : '–'), h('span', null, h('span', { class: 'score-l' }, label), h('span', { class: 'pill' + (b && hi.includes(b) ? ' hi' : b && mid.includes(b) ? ' mid' : '') }, b ? `${b} · out of ${max}` : 'not finished'))); }
@@ -4032,72 +4210,16 @@ Psychiatrist`;
     return h('div', { class: 'doc-grid' }, rail, mainP);
   }
 
-  /* ---------- the Day tab: the day's visits beside the open one, which records and writes the note like an AI scribe ---------- */
+  /* ---------- visits: each is recorded and its note written by AI inside its chart entry (the Day tab is in chart.js) ---------- */
   let rec = { vid: null, idx: 0, timer: null };
   function newVisit(a) { return { id: uid('v'), pid: a.pid, start: a.start, type: a.type, mode: a.mode, lang: P(a.pid).lang || 'en', demo: { alex: 'alex', meilin: 'meilin', harjinder: 'harjinder' }[a.pid] || 'generic', status: 'scheduled', consent: false, transcript: [], transcriptFrom: null, note: { mse: '', impression: '', plan: '', summary: '', interp: '' } }; }
-  function startVisit(a) {
+  // Starting a visit starts its chart entry, from the consult or follow-up template, and opens it on the Day tab.
+  function startVisit(a, kind) {
     let v = S.visits.find(x => x.id === a.visitId);
     if (!v) { v = newVisit(a); S.visits.push(v); a.visitId = v.id; }
+    if (!v.entry) { v.entry = true; v.tpl = VISIT_TPL[kind || (a.type === 'consult' ? 'consult' : 'followup')]; logEvent(a.pid, `Chart entry started: ${v.tpl}`); }
     if (['booked', 'confirmed', 'arrived'].includes(a.status)) a.status = 'inprogress';
-    persist(); closeDialog(); go('visits', { visitId: v.id, sessionTab: null, apptSel: null });
-  }
-  // Laid out like Jane's Day tab (decided 2026-11-06): the day's visits on the left, with ‹ › to change day, and the
-  // chosen visit on the right, where it is recorded and the AI writes the note (the visit itself kept its Heidi-style
-  // Context, Note and Transcript tabs). Opening a visit from elsewhere turns to its day.
-  const apptOfVisit = v => S.appts.find(a => a.visitId === v.id);
-  VIEWS.visits = function () {
-    const pg = h('div', { class: 'page wide' });
-    const want = S.visits.find(v => v.id === ui.visitId && P(v.pid));
-    if (want) ui.chartDay = startOfDay(want.start);
-    const day = startOfDay(ui.chartDay || clinicDay), today = startOfDay(Date.now());
-    const list = S.visits.filter(v => P(v.pid) && startOfDay(v.start) === day && (apptOfVisit(v) || {}).status !== 'cancelled').sort((x, y) => x.start - y.start);
-    const cur = want && list.includes(want) ? want : list.find(v => v.status !== 'signed') || list[0];
-    ui.visitId = cur ? cur.id : null;
-    const turn = d => { ui.chartDay = d; ui.visitId = null; ui.sessionTab = null; renderKeepScroll = false; render(); };
-    const side = h('aside', { class: 'card session-list day-col', 'aria-label': 'Visits this day' },
-      h('div', { class: 'day-nav' },
-        btn('‹', () => turn(shiftWorkday(day, -1)), 'quiet small', { 'aria-label': 'Previous day' }),
-        h('div', { class: 'day-when' }, h('b', null, day === today ? 'Today' : fmtDay(day)), h('small', null, longDay(day))),
-        btn('›', () => turn(shiftWorkday(day, 1)), 'quiet small', { 'aria-label': 'Next day' })),
-      day !== startOfDay(clinicDay) ? btn('Back to today', () => turn(clinicDay), 'quiet small') : null,
-      list.length ? h('div', { class: 'sl-groups' }, list.map(v => sessionItem(v, v === cur))) : h('p', { class: 'empty small' }, isWeekend(day) ? 'The clinic is closed.' : 'No visits this day.'),
-      role === 'doctor' ? btn('New visit', () => openNewVisit(), 'small') : null,
-      list.some(v => v.status === 'signed') ? h('p', { class: 'hint' }, 'A lock means the note is signed.') : null);
-    pg.append(h('div', { class: 'visits' }, side, cur ? sessionView(P(cur.pid), cur) : h('section', { class: 'card' }, h('p', { class: 'empty' }, 'Pick a day with visits, or start one from the schedule.'))));
-    return pg;
-  };
-  // A visit's one-line summary in the day's list: the impression once there is one, otherwise where the visit is at.
-  function visitSummary(v) {
-    const imp = (v.note.impression || '').split('\n')[0].trim();
-    if (imp) return imp;
-    if (rec.vid === v.id) return rec.paused ? 'Recording paused' : 'Recording…';
-    return v.transcript && v.transcript.length ? `${TYPES[v.type].label} · transcript ready` : `${TYPES[v.type].label} · ${MODES[v.mode]}`;
-  }
-  function sessionItem(v, sel) {
-    const p = P(v.pid);
-    return h('button', { type: 'button', class: 'sl-item', 'data-name': p.name.toLowerCase(), 'aria-current': String(sel), onclick: () => { ui.visitId = v.id; ui.sessionTab = null; renderKeepScroll = true; render(); showOnPhone('.session', 1000); } },
-      h('span', { class: 'sl-top' }, h('b', null, p.name), v.status === 'signed' ? lockIcon() : null, h('small', { class: 'sl-when' }, fmtTime(v.start))),
-      h('span', { class: 'sl-sub' }, h('small', null, visitSummary(v)), v.status !== 'signed' && v.status !== 'scheduled' ? chip(VISIT_STATUS[v.status][0], VISIT_STATUS[v.status][1]) : null));
-  }
-  function sessionView(p, v) {
-    const signed = v.status === 'signed', mine = rec.vid === v.id, recording = mine && !!(rec.timer || rec.paused), hasT = !!(v.transcript && v.transcript.length);
-    const tab = ui.sessionTab || (signed || hasT ? 'note' : recording ? 'transcript' : 'context');
-    const body = tab === 'context' ? contextTab(p, v) : tab === 'transcript' ? transcriptTab(v, recording) : signed ? signedNote(p, v) : noteCard(p, v);
-    const sc = DEMO_TRANSCRIPTS[v.demo] || DEMO_TRANSCRIPTS.generic, lang = LANGS[v.lang] || 'English';
-    return h('section', { class: 'card session' },
-      h('div', { class: 'session-head' },
-        h('div', { class: 'title-block' },
-          h('div', { class: 'title-line' }, h('button', { class: 'linkish big', type: 'button', onclick: () => openPatient(p.id) }, p.name),
-            signed ? h('span', { class: 'signed-tag' }, lockIcon(), 'Signed and locked') : chip(VISIT_STATUS[v.status][0], VISIT_STATUS[v.status][1])),
-          h('p', { class: 'subtitle' }, [TYPES[v.type].label, `${dayName(v.start)}, ${fmtTime(v.start)}`, MODES[v.mode]].join(' · '), ' · ', lang)),
-        signed ? null : recControls(v, recording, mine && !!rec.paused, hasT)),
-      needsCall(p) ? h('p', { class: 'flag-line' }, 'This patient still needs a safety follow-up.') : null,
-      signed ? null : h('p', { class: 'hint rec-hint' }, micReady
-        ? `${transcriber.hint(LANGS[v.lang] || 'English', v.lang || 'en')} ${transcriber.heardBy}, so use made-up voices only. The note is always written in English, and the recording is deleted when you sign.`
-        : `Demo: recording plays a made-up ${sc.lang === 'en' ? 'English' : LANGS[sc.lang]} session${sc.interpreter ? ' with an interpreter' : ''}. The note is always written in English, and the recording is deleted when you sign.` + (offClaude ? ' To record from the microphone, open this page in Chrome, Edge or Safari.' : '')),
-      h('div', { class: 'tabs', role: 'tablist', 'aria-label': 'Visit' }, [['context', 'Context'], ['note', 'Note'], ['transcript', 'Transcript']].map(([k, l]) => h('button', { class: 'tab', role: 'tab', type: 'button', 'aria-selected': String(tab === k), onclick: () => { ui.sessionTab = k; renderKeepScroll = true; render(); } }, l,
-        k === 'transcript' && recording && !rec.paused ? h('span', { class: 'live-dot', title: 'Recording' }) : null, k === 'transcript' && hasT ? h('span', { class: 'count' }, String(v.transcript.length)) : null))),
-      body);
+    persist(); closeDialog(); go('visits', { visitId: v.id, apptSel: null });
   }
   // Heidi's capture controls in our look: microphone and level, the spoken language, the timer, and the red record
   // button with its other ways in. The language is picked here, before recording, since speech recognition hears one.
@@ -4137,31 +4259,6 @@ Psychiatrist`;
       btn('Cancel', closeDialog),
       btn('Use this transcript', () => { if (!box.value.trim()) { box.focus(); toast('Paste the transcript first.'); return; } closeDialog(); usePasted(v, box.value); }, 'primary')]);
   }
-  function contextTab(p, v) {
-    const it = p.intake, done = it.status === 'done' && !!it.A, f = done ? flags(it.A) : { urgent: [], review: [] }, sc = scoresOf(p);
-    const prev = S.visits.filter(x => x.pid === p.id && x.status === 'signed' && x.id !== v.id && x.start < v.start).sort((x, y) => y.start - x.start)[0];
-    const openIntake = () => openPatient(p.id, 'intake'), openPrev = () => openNoteView(prev);
-    const meds = done && Array.isArray(it.A.meds_current) ? it.A.meds_current.map(m => `${m.name}${known(m.dose) ? ' ' + m.dose : ''}`).join(', ') : '';
-    const reason = done && typeof it.A.reason === 'string' && it.A.reason !== SKIP && it.A.reason !== DISCUSS ? it.A.reason : '';
-    const ctx = textEl('ctx-' + v.id, v.context || '', 4);
-    ctx.placeholder = 'For example: focus on sleep and the last medication trial; the family doctor asked about ADHD.';
-    ctx.readOnly = v.status === 'signed';
-    ctx.addEventListener('input', () => { v.context = ctx.value; persistSoon(); });
-    return h('div', { class: 'stack gap-l' },
-      h('div', { class: 'cols even' },
-        h('section', { class: 'panel stack click', onclick: panelClick(openIntake) }, h('div', { class: 'card-h' }, h('h2', null, 'From the intake'), btn('Open intake', openIntake, 'quiet small')),
-          done ? [
-            reason ? h('p', { class: 'ctx-quote' }, `“${clip(reason, 240)}”`) : null,
-            h('div', { class: 'score-row' }, scoreEl(sc.phq, 'PHQ-9', 27, phqBand, ['moderately severe', 'severe'], ['moderate']), scoreEl(sc.gad, 'GAD-7', 21, gadBand, ['severe'], ['moderate'])),
-            f.urgent.length ? h('p', { class: 'flag-line' }, clip(f.urgent[0], 200)) : null,
-            f.review.length ? h('ul', { class: 'ctx-list' }, f.review.slice(0, 4).map(s => h('li', null, clip(s, 140)))) : null,
-          ] : h('p', { class: 'hint' }, sentence(INTAKE_STATUS[it.status][0]))),
-        h('section', { class: 'panel stack' + (prev ? ' click' : ''), onclick: prev ? panelClick(openPrev) : null }, h('div', { class: 'card-h' }, h('h2', null, prev ? `Last note · ${fmtDay(prev.start)}` : 'Last note'), prev ? btn('Open note', openPrev, 'quiet small') : null),
-          prev ? [h('p', { class: 'pre' }, prev.note.impression), h('p', { class: 'pre muted' }, clip(prev.note.plan, 400))] : h('p', { class: 'hint' }, 'No earlier notes.'),
-          h('p', { class: 'hint' }, `Medications: ${meds || 'none reported'}. Allergies: ${p.allergies || 'not recorded'}.`))),
-      field('Your notes before the visit', ctx, 'Background for the AI. Only what is said in the visit goes into the note.'),
-      v.status === 'signed' && !(v.files || []).length ? null : attachRow(v));
-  }
   // Heidi's paperclip: files to have at hand for the visit. The prototype lists them but never reads or sends them.
   function attachRow(v) {
     const files = v.files || [], locked = v.status === 'signed';
@@ -4171,15 +4268,6 @@ Psychiatrist`;
       locked ? null : btn([svgEl('<path d="M21 11.5l-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.6a1.8 1.8 0 0 1-2.6-2.6l8-8"/>', 'clip'), 'Attach a file'], () => pick.click(), 'small'), pick,
       files.map((f, i) => h('span', { class: 'file-chip' }, h('span', null, f.name), locked ? null : h('button', { type: 'button', 'aria-label': `Remove ${f.name}`, onclick: () => { v.files.splice(i, 1); persist(); renderKeepScroll = true; render(); } }, '×'))),
       h('span', { class: 'hint' }, files.length ? 'Listed only: this prototype doesn’t open or send the files.' : 'A referral letter, lab results or other papers for this visit.'));
-  }
-  // A whole panel opens what its button opens, unless the click was on a control or ended a text selection.
-  function panelClick(fn) { return e => { if (e.target.closest('button, a, input, select, textarea') || String(window.getSelection() || '').trim()) return; fn(); }; }
-  // A signed note in a sheet, so the doctor can read all of it without leaving the visit they're in.
-  function openNoteView(v) {
-    openDialog(`Note · ${fmtDay(v.start)}`, h('div', { class: 'stack' },
-      h('p', { class: 'hint' }, `${TYPES[v.type].label}, ${MODES[v.mode].toLowerCase()}. ${sentence(`Signed by ${CLINIC.doctor} ${whenIn(v.signedAt)}`)}`), noteRead(v)), [
-      btn('Open in the Day tab', () => { closeDialog(); go('visits', { visitId: v.id, sessionTab: 'note' }); }),
-      btn('Close', closeDialog, 'primary')], true);
   }
   // The transcript with its AI summary beside it. Picking a line lights up the summary points it went into; picking a point lights up its lines.
   function transcriptTab(v, recording) {
@@ -4451,8 +4539,9 @@ Psychiatrist`;
     v.note.mse = mseText(v.noteDraft.mse); v.note.plan = planText(v.noteDraft.plan);
     return v.noteDraft;
   }
-  // The note as a chart template, the way Jane lays out charts: every part of the exam and every plan item in its own labelled box, all lined up.
-  function noteCard(p, v) {
+  // The note's parts, which its chart entry lays out (chart.js): the exam, impression, plan and the rest as boxes, the
+  // AI's buttons, the Ask box and Sign.
+  function noteParts(p, v) {
     const hasT = !!(v.transcript && v.transcript.length);
     const example = hasT && v.transcriptFrom === 'demo' && v.transcript.length === (DEMO_TRANSCRIPTS[v.demo] || {}).lines.length ? EXAMPLE_NOTES[v.demo] : null;
     const out = h('div', { class: 'ai-out live', hidden: true }), note = h('p', { class: 'hint' });
@@ -4464,19 +4553,15 @@ Psychiatrist`;
       persistSoon(); syncSign();
     };
     const box = (id, value, hint, set, extra) => { const b = noteBox(`${id}-${v.id}`, value, hint, val => { set(val); changed(); }, extra); boxes.push(b); return b; };
-    const textRow = (k, label) => { const b = box('note-' + k, v.note[k], NOTE_HINTS[k], val => { v.note[k] = val; }); return nfRow(label, b.box, b.ta.id); };
-    const exam = h('section', { class: 'nf-group' }, h('h3', null, 'Mental status examination'),
-      MSE_PARTS.map(([k, label]) => { const b = box('mse-' + k, d.mse[k], NOTE_HINTS[k], val => { d.mse[k] = val; }); return nfRow(label, b.box, b.ta.id); }));
-    const items = d.plan.items.map((t, i) => {
+    const text = (k, label) => box('note-' + k, v.note[k], NOTE_HINTS[k], val => { v.note[k] = val; }, { attrs: { 'aria-label': label } }).box;
+    const mse = h('div', { class: 'nf' }, MSE_PARTS.map(([k, label]) => { const b = box('mse-' + k, d.mse[k], NOTE_HINTS[k], val => { d.mse[k] = val; }); return nfRow(label, b.box, b.ta.id); }));
+    const plan = h('div', { class: 'plan-list' }, d.plan.items.map((t, i) => {
       const remove = d.plan.items.length > 1 ? h('button', { class: 'nf-x', type: 'button', 'aria-label': `Remove plan item ${i + 1}`, onclick: () => { d.plan.items.splice(i, 1); changed(); renderKeepScroll = true; render(); } }, '×') : null;
-      const b = box('plan-' + i, t, NOTE_HINTS.item, val => { d.plan.items[i] = val; }, { prefix: h('span', { class: 'nf-num', 'aria-hidden': 'true' }, `${i + 1}.`), suffix: remove, attrs: { 'aria-label': `Plan item ${i + 1}` } });
-      return nfRow(i ? '' : 'Plan', b.box, b.ta.id);
-    });
-    const addItem = nfRow('', h('button', { class: 'nf-add', type: 'button', onclick: () => { d.plan.items.push(''); persistSoon(); renderKeepScroll = true; render(); const el = $(`plan-${d.plan.items.length - 1}-${v.id}`); if (el) el.focus(); } }, '+ Add a plan item'));
-    const gp = box('plan-gp', d.plan.gp, NOTE_HINTS.gp, val => { d.plan.gp = val; });
-    const plan = h('section', { class: 'nf-group' }, h('h3', null, 'Impression and plan'), textRow('impression', 'Impression'), items, addItem, nfRow('For the family doctor', gp.box, gp.ta.id));
-    const patient = h('section', { class: 'nf-group' }, h('h3', null, 'For the patient', h('span', { class: 'tag' }, 'Sent after signing')), textRow('summary', 'Patient summary'));
-    const interp = v.note.interp || (v.transcript || []).some(l => l.who === 'int') ? h('section', { class: 'nf-group flagged' }, h('h3', null, 'Interpretation check'), textRow('interp', 'Not interpreted in the room')) : null;
+      return box('plan-' + i, t, NOTE_HINTS.item, val => { d.plan.items[i] = val; }, { prefix: h('span', { class: 'nf-num', 'aria-hidden': 'true' }, `${i + 1}.`), suffix: remove, attrs: { 'aria-label': `Plan item ${i + 1}` } }).box;
+    }), h('button', { class: 'nf-add', type: 'button', onclick: () => { d.plan.items.push(''); persistSoon(); renderKeepScroll = true; render(); const el = $(`plan-${d.plan.items.length - 1}-${v.id}`); if (el) el.focus(); } }, '+ Add a plan item'));
+    const gp = box('plan-gp', d.plan.gp, NOTE_HINTS.gp, val => { d.plan.gp = val; }, { attrs: { 'aria-label': 'For the family doctor' } }).box;
+    const impression = text('impression', 'Impression'), summary = text('summary', 'Patient summary');
+    const interp = v.note.interp || (v.transcript || []).some(l => l.who === 'int') ? text('interp', 'Not interpreted in the room') : null;
     const fill = obj => { ['mse', 'impression', 'plan', 'summary', 'interp'].forEach(k => { v.note[k] = obj[k] || ''; }); v.noteDraft = null; if (v.status !== 'signed') v.status = 'drafted'; persist(); render(); };
     const filled = ['mse', 'impression', 'plan', 'summary', 'interp'].some(k => (v.note[k] || '').trim());
     const left = r => (r.dropped ? ` ${r.dropped} ${r.dropped === 1 ? 'sentence' : 'sentences'} the AI couldn't tie to the transcript ${r.dropped === 1 ? 'was' : 'were'} left out.` : '');
@@ -4486,15 +4571,13 @@ Psychiatrist`;
     const useExample = () => { fill(example); toast('Example note filled in. Check it before signing.'); };
     const exBtn = btn('Use example note', useExample, aiOffered() ? 'small' : 'primary small', { hidden: !example || filled });
     const promptBtn = btn('Copy AI prompt', ev => copyOrShow(notePrompt(p, v), ev.currentTarget, 'AI prompt'), 'small', { hidden: !(hasT && aiOff()) || filled });
-    // Once there is a note: copy it, or write it again (which replaces your edits, so it asks first).
+    // Writing the note again replaces the doctor's edits, so it asks first.
     const again = () => openDialog('Write the note again?', h('p', null, 'The AI writes a new note from the transcript. Your edits to this note are replaced.'), [btn('Cancel', closeDialog), btn('Write again', () => { closeDialog(); write(); }, 'primary')]);
-    const copyBtn = btn(svgEl('<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>', 'ico'), () => copyText(noteAsText(v)), 'quiet small icon', { title: 'Copy the note', 'aria-label': 'Copy the note', hidden: !filled });
-    const more = filled ? moreMenu([aiOffered() && hasT ? ['Write the note again', again] : null, example ? ['Use example note', useExample] : null, hasT ? ['Copy AI prompt', () => copyText(notePrompt(p, v))] : null], svgEl('<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>', 'ico dots'), 'btn-quiet btn-small btn-icon', 'More note actions') : null;
     // As soon as a recording stops, the note is written, like Heidi; never over a note that already has text.
     if (autoWrite.has(v.id)) {
       autoWrite.delete(v.id);
       if (!filled && hasT) setTimeout(() => { if (sampleFn) write(); else if (example) useExample(); }, 0);
-      else if (filled) toast('Recording stopped. To use the new transcript, write the note again from the ⋯ menu.');
+      else if (filled) toast('Recording stopped. To use the new transcript, write the note again from the settings menu under the entry.');
     }
     // Heidi's Ask box: the AI changes the note as asked, keeping to what was said or what the note already says.
     const askIn = h('input', { type: 'text', class: 'ask-in', placeholder: hasT ? 'Ask AI to change the note, like “make the plan shorter”' : 'Record the visit first, then ask AI to change the note', 'aria-label': 'Ask AI to change the note', disabled: !hasT || null });
@@ -4515,7 +4598,7 @@ Psychiatrist`;
       : aiOffered() ? 'The AI writes only what was said in the visit and leaves anything not mentioned blank. ' + aiWhose() + (example ? ' The example was written ahead of time from this demo session.' : '')
       : sampleState === 'checking' ? 'Checking whether AI writing is available here…'
       : (example ? 'The example was written by Claude ahead of time from this demo session. ' : '') + 'To try the AI yourself, copy the prompt into a chat at claude.ai.';
-    const signBtn = btn('Sign and lock', () => signNote(p, v), 'primary', { disabled: true });
+    const signBtn = btn(['Sign', lockIcon()], () => signNote(p, v), 'primary small', { disabled: true });
     // Parts the doctor flagged with [to confirm] are counted beside Sign so they aren't missed.
     const toConfirm = h('span', { class: 'chip-s warn' }), signHint = h('span', { class: 'hint' });
     const syncSign = () => {
@@ -4527,36 +4610,24 @@ Psychiatrist`;
       toConfirm.hidden = !n; toConfirm.textContent = `${n} ${n === 1 ? 'field' : 'fields'} to confirm`;
     };
     syncSign();
-    return h('div', { class: 'stack note-f' },
-      h('div', { class: 'toolbar' }, h('span', { class: 'chip-s info' }, 'Template: ' + (v.type === 'consult' ? 'psychiatric consult note' : 'follow-up note')), h('span', { class: 'spacer' }), go2, exBtn, promptBtn, stop, copyBtn, more),
-      filled ? null : h('p', { class: 'hint' }, hint), out, note,
-      h('div', { class: 'nf' }, exam, plan, patient, interp),
-      h('div', { class: 'note-foot' },
-        h('div', { class: 'ask-row' }, svgEl('<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/>', 'ico spark'), askIn, askGo),
-        h('div', { class: 'sign-row' }, signBtn, btn('Save draft', () => { persist(); toast('Draft saved.'); }), toConfirm, signHint)));
+    // Clearing a part empties its boxes; the redraw builds them again.
+    const clear = k => {
+      if (k === 'mse') MSE_PARTS.forEach(([m]) => { d.mse[m] = ''; });
+      else if (k === 'plan') d.plan.items = [''];
+      else if (k === 'gp') d.plan.gp = '';
+      else v.note[k] = '';
+      changed(); renderKeepScroll = true; render();
+    };
+    return {
+      mse, impression, plan, gp, summary, interp, clear, signBtn, below: [toConfirm, signHint],
+      ai: h('div', { class: 'ce-ai' }, filled ? null : h('div', { class: 'toolbar' }, go2, exBtn, promptBtn, h('p', { class: 'hint' }, hint)), stop, out, note),
+      gear: [aiOffered() && hasT ? [filled ? 'Write the note again' : 'Write the note with AI', filled ? again : write] : null, example ? ['Use example note', useExample] : null, hasT ? ['Copy AI prompt', () => copyText(notePrompt(p, v))] : null, filled ? ['Copy the note', () => copyText(noteAsText(v))] : null],
+      ask: h('div', { class: 'ask-row' }, svgEl('<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/>', 'ico spark'), askIn, askGo),
+    };
   }
   // The note as plain text, for copying into another system.
   const noteAsText = v => [['Mental status examination', v.note.mse], ['Impression', v.note.impression], ['Plan', v.note.plan], ['Patient summary', v.note.summary], ['Not interpreted in the room', v.note.interp]]
     .filter(([, t]) => (t || '').trim()).map(([k, t]) => `${k}\n${t.trim()}`).join('\n\n');
-  // A signed note keeps the same rows, read-only.
-  function noteRead(v) {
-    const mse = mseParts(v.note.mse), plan = planParts(v.note.plan);
-    const row = (label, text) => (text && text.trim() ? nfRow(label, h('p', { class: 'nf-value' + (TO_CONFIRM.test(text) ? ' nf-confirm' : '') }, text)) : null);
-    return h('div', { class: 'nf' },
-      h('section', { class: 'nf-group' }, h('h3', null, 'Mental status examination'), MSE_PARTS.map(([k, label]) => row(label, mse[k]))),
-      h('section', { class: 'nf-group' }, h('h3', null, 'Impression and plan'), row('Impression', v.note.impression), plan.items.map((t, i) => row(i ? '' : 'Plan', `${i + 1}. ${t}`)), row('For the family doctor', plan.gp)),
-      v.note.summary ? h('section', { class: 'nf-group' }, h('h3', null, 'For the patient'), row('Patient summary', v.note.summary)) : null,
-      v.note.interp ? h('section', { class: 'nf-group flagged' }, h('h3', null, 'Interpretation check'), row('Not interpreted in the room', v.note.interp)) : null);
-  }
-  function signedNote(p, v) {
-    const letter = S.letters.find(l => l.visitId === v.id);
-    return h('div', { class: 'stack note-signed' },
-      h('div', { class: 'row' }, letter ? btn('Open letter', () => openPatient(p.id, 'letters', { letterId: letter.id }), 'primary small') : btn('Create letter to family doctor', ev => createLetter(p, v, ev.currentTarget), 'primary small'),
-        v.note.summary ? btn('Send summary to patient', () => openSummarySend(p, v), 'small') : null,
-        role === 'doctor' ? btn('New prescription', () => openRx(p), 'small') : null),
-      noteRead(v),
-      h('p', { class: 'hint' }, sentence(`Signed by ${CLINIC.doctor} ${whenIn(v.signedAt)}`) + (v.audioDeleted ? ' The recording was deleted.' : '') + ' MSP billing is not connected in this prototype.'));
-  }
   function signNote(p, v) {
     if (role !== 'doctor') return;
     v.status = 'signed'; v.signedAt = Date.now(); v.audioDeleted = true;
@@ -4638,7 +4709,7 @@ Psychiatrist`;
     S.faxes.filter(f => f.dir === 'in' && f.pid === p.id).forEach(f => docs.push({ at: f.at, title: f.subject, src: `Fax from ${f.fromName}`, open: () => openFaxView(f) }));
     S.letters.filter(l => l.pid === p.id).forEach(l => docs.push({ at: l.created, title: l.title, src: l.status === 'faxed' ? 'Sent to the family doctor' : 'Draft', open: () => openDocPreview(l.title, letterPaper(l.text)) }));
     S.rx.filter(r => r.pid === p.id).forEach(r => docs.push({ at: r.created, title: `Prescription: ${r.drug} ${r.strength}`, src: 'Written by Dr. Lee', open: () => openDocPreview('Prescription', rxPaper(p, r)) }));
-    if (p.intake.status === 'done') docs.push({ at: p.intake.completedAt, title: 'Pre-visit questionnaire', src: 'Filled in online by the patient', open: () => { ui.tab = 'intake'; render(); } });
+    if (p.intake.status === 'done') docs.push({ at: p.intake.completedAt, title: 'Pre-visit questionnaire', src: 'Filled in online by the patient', open: () => openTab(p, 'intake') });
     docs.sort((x, y) => y.at - x.at);
     const upload = h('input', { type: 'file', id: 'upload-' + p.id, class: 'visually-hidden', onchange: e => { const f = e.target.files[0]; if (f) { logEvent(p.id, `File added: ${f.name}`); persist(); toast(`${f.name} noted (demo: the file isn't stored).`); render(); } } });
     return h('section', { class: 'card' }, h('div', { class: 'card-h' }, h('h2', null, 'Documents'), h('label', { class: 'btn btn-quiet btn-small', for: upload.id }, 'Add a file'), upload),
@@ -4766,10 +4837,10 @@ Psychiatrist`;
       btn('Open patient file', () => { closeDialog(); openPatient(p.id); }),
       role === 'doctor' && a.status !== 'cancelled' ? btn(noteLabel, () => { closeDialog(); startVisit(a); }, 'primary') : null]);
   }
-  function openNewVisit(pid) {
+  function openNewVisit(pid, kind) {
     if (role !== 'doctor') { toast('Only Dr. Lee starts visits.'); return; }
     const ptSel = selectEl('nv-pt', [['', 'Choose a patient…']].concat(S.patients.slice().sort((x, y) => x.name.localeCompare(y.name)).map(p => [p.id, p.name])), pid || '');
-    const typeSel = selectEl('nv-type', Object.entries(TYPES).map(([k, t]) => [k, t.label]), 'followup');
+    const typeSel = selectEl('nv-type', Object.entries(TYPES).map(([k, t]) => [k, t.label]), kind === 'consult' ? 'consult' : 'followup');
     const modeSel = selectEl('nv-mode', Object.entries(MODES), 'phone');
     const err = h('p', { class: 'err', hidden: true });
     openDialog('New visit', h('div', { class: 'form' }, field('Patient', ptSel), h('div', { class: 'form-grid' }, field('Type', typeSel), field('Format', modeSel)), h('p', { class: 'hint' }, "For a visit that isn't on the schedule, like a phone call. It starts now and shows on today's schedule."), err), [
@@ -4780,8 +4851,9 @@ Psychiatrist`;
         const start = Math.floor(Date.now() / (5 * MIN)) * 5 * MIN;
         const a = { id: uid('a'), pid: p.id, start, mins: TYPES[typeSel.value].mins, type: typeSel.value, mode: modeSel.value, status: 'inprogress', visitId: null, reminders: [] };
         const v = newVisit(a); S.visits.push(v); a.visitId = v.id; S.appts.push(a);
+        v.entry = true; v.tpl = VISIT_TPL[a.type === 'consult' ? 'consult' : 'followup'];
         logEvent(p.id, `${TYPES[a.type].label} started (not on the schedule)`);
-        persist(); closeDialog(); go('visits', { visitId: v.id, sessionTab: 'context' });
+        persist(); closeDialog(); go('visits', { visitId: v.id });
       }, 'primary')]);
   }
   function openNewPatient({ fromFax }) {
@@ -4916,6 +4988,783 @@ Psychiatrist`;
     openDialog(trial ? 'Start over?' : 'Reset the demo?', h('p', null, trial ? 'Every patient, appointment, fax and note you added is removed, and the clinic starts empty again.' : 'Every patient, appointment, fax and note goes back to how the demo started. Your changes in this browser are lost.'), [btn('Cancel', closeDialog), btn(trial ? 'Start over' : 'Reset', () => { stopTimer(); S = freshStore(); persist(); closeDialog(); Object.assign(ui, { view: 'schedule', pid: null, tab: 'profile', visitId: null, letterId: null, inboxSel: null, day: clinicDay, schedView: 'day', apptSel: null, sessionTab: null, editing: false }); toast(trial ? 'The clinic is empty again.' : 'Demo data reset.'); go('schedule'); }, 'danger')]);
   }
 
+  /* ---------- charting, laid out like Jane's (decided 2026-11-06, from Jane's product tour) ---------- */
+  // The Day tab has the day's schedule down the left; picking an appointment opens that patient's file beside it, on its
+  // Chart tab: every chart entry, newest first, each a preview that opens to the whole entry. The intake form is one of
+  // them. A visit's note is an entry made from a visit template, and the visit is recorded and the note written by AI
+  // inside it. Other entries are made from templates built out of items (a note, check boxes, a body diagram and so on)
+  // under Templates in the name menu. Only the arrangement follows Jane; the look and the wording are this prototype's.
+  const CH_ICON = {
+    star: '<path d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"/>',
+    cal: '<rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3.5v3M16 3.5v3"/>',
+    unlock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.6-1.7"/>',
+    grid: '<rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/>',
+    gear: '<circle cx="12" cy="12" r="3"/><path d="M12 3.5v2.2M12 18.3v2.2M3.5 12h2.2M18.3 12h2.2M6 6l1.6 1.6M16.4 16.4L18 18M6 18l1.6-1.6M16.4 7.6L18 6"/>',
+    filter: '<path d="M4 6h16M7 12h10M10 18h4"/>',
+    alert: '<path d="M12 4l9 16H3z"/><path d="M12 10v4.5M12 17.2v.1"/>',
+    book: '<path d="M5 4.5h9.5a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h9.5"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    expand: '<path d="M8 9l4-4 4 4M8 15l4 4 4-4"/>',
+    tick: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+    chart: '<rect x="5" y="3.5" width="14" height="17" rx="2.5"/><path d="M8.5 8h7M8.5 12h7M8.5 16h4"/>',
+    image: '<rect x="3.5" y="5" width="17" height="14" rx="2.5"/><path d="M3.5 16l5-5 4 4 3-3 4.5 4.5"/><circle cx="15.5" cy="9" r="1.5"/>',
+  };
+  // The items templates and entries are built from: what each is called, a line about it, and its icon.
+  const ITEM_TYPES = {
+    note: ['Note', 'A box for free text.', '<path d="M6 3.5h8.5L19 8v12.5H6z"/><path d="M14 3.5V8h5M9 12h7M9 16h7"/>'],
+    heading: ['Heading', 'A title that splits an entry into parts.', '<path d="M6 4.5v15M18 4.5v15M6 12h12"/>'],
+    checks: ['Check boxes', 'Tick any of a list of choices.', '<rect x="4" y="4" width="16" height="16" rx="3.5"/><path d="M8 12.3l2.6 2.6L16 9.4"/>'],
+    select: ['Drop-down', 'Pick one choice from a list.', '<rect x="3.5" y="6.5" width="17" height="11" rx="3"/><path d="M13.5 11l2 2 2-2"/>'],
+    scale: ['Scale', 'A slider for a score, like 0 to 10.', '<path d="M4 12h16"/><circle cx="14.5" cy="12" r="3"/>'],
+    vitals: ['Vitals', 'Blood pressure, pulse, weight and height, with the BMI worked out.', '<path d="M3 12.5h4l2.2-5 4 10.5 2.3-5.5H21"/>'],
+    body: ['Body diagram', 'Pin numbered notes to places on a body outline, or draw on it.', '<circle cx="12" cy="4.8" r="2.3"/><path d="M12 8v7.5M7.5 10.2l4.5-1.2 4.5 1.2M9.6 21l2.4-5.5 2.4 5.5"/>'],
+    sketch: ['Sketch', 'A blank page to draw or write on.', '<path d="M4.5 19.5l3.8-.9L19 7.9 16.1 5 5.4 15.7z"/><path d="M14.4 6.7l2.9 2.9"/>'],
+    mse: ['Mental status exam', 'The seven parts of the exam, each with its own box.', '<path d="M9.5 19.5h5M10 16.5h4M12 3.5a5.6 5.6 0 0 0-3.4 10.1c.6.5.9 1.1.9 1.9v1h5v-1c0-.8.3-1.4.9-1.9A5.6 5.6 0 0 0 12 3.5z"/>'],
+    plan: ['Plan', 'A numbered list of what happens next.', '<path d="M9.5 6.5h10M9.5 12h10M9.5 17.5h10M4.5 6.5h1M4.5 12h1M4.5 17.5h1"/>'],
+    file: ['File or image', 'List the files that go with the entry.', '<path d="M20 11.5l-8 8a5 5 0 0 1-7.1-7.1l8-8a3.4 3.4 0 0 1 4.8 4.8l-8 8a1.7 1.7 0 0 1-2.4-2.4l7.4-7.4"/>'],
+    signature: ['Signature', 'Sign by drawing with a finger, pen or mouse.', '<path d="M3.5 16.5c2.5 0 3.6-7.5 5.6-7.5s-.1 7.5 1.9 7.5 2.7-4.6 4.6-4.6.9 4.6 4.9 4.6M3.5 20h17"/>'],
+    instruction: ['Instruction', 'A reminder for whoever fills the entry in. It isn’t part of the record.', '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 7.8v.1"/>'],
+  };
+  function newItem(type, label, extra) {
+    const it = Object.assign({ id: uid('it'), type, label: label || ITEM_TYPES[type][0] }, extra || {});
+    if (type === 'checks' && !it.options) it.options = ['Choice 1', 'Choice 2', 'Choice 3'];
+    if (type === 'select' && !it.options) it.options = ['Choice 1', 'Choice 2'];
+    if (type === 'scale') { if (it.min == null) it.min = 0; if (it.max == null) it.max = 10; }
+    if (type === 'body' && !it.image) it.image = 'body';
+    if (type === 'instruction' && !label) it.label = 'What to do when filling this in.';
+    return it;
+  }
+  const copyItem = it => { const c = JSON.parse(JSON.stringify(it)); delete c.value; c.id = uid('it'); return c; };
+  const VISIT_TPL = { consult: 'Psychiatric consult note', followup: 'Psychiatric follow-up note' };
+  const visitTitle = v => v.tpl || VISIT_TPL[v.type === 'consult' ? 'consult' : 'followup'];
+  // What a visit's note holds, shown when its template is opened; the visit fills these in itself.
+  const VISIT_PARTS = [['note', 'Notes before the visit'], ['recording', 'Visit recording, transcript and summary'], ['mse', 'Mental status examination'], ['note', 'Impression'], ['plan', 'Plan'], ['note', 'For the family doctor'], ['note', 'Patient summary'], ['file', 'Files']];
+  function starterTemplates() {
+    const t = (id, name, items, extra) => Object.assign({ id, name, by: CLINIC.doctor, on: true, items }, extra || {});
+    return [
+      t('tpl-consult', VISIT_TPL.consult, [], { by: 'Demo Clinic', visit: 'consult' }),
+      t('tpl-followup', VISIT_TPL.followup, [], { by: 'Demo Clinic', visit: 'followup' }),
+      t('tpl-phone', 'Phone check-in', [newItem('checks', 'Spoke with', { options: ['The patient', 'A family member', 'Left a message'] }), newItem('scale', 'Mood today'), newItem('note', 'What was talked about'), newItem('checks', 'Safety', { options: ['No thoughts of self-harm', 'Has the 9-8-8 number', 'Safety plan reviewed'] }), newItem('note', 'Next steps')]),
+      t('tpl-side', 'Side effect check', [newItem('checks', 'Side effects', { options: ['Nausea', 'Headache', 'Trouble sleeping', 'Drowsiness', 'Sexual side effects', 'Weight change', 'Restlessness'] }), newItem('scale', 'How much they bother them'), newItem('note', 'Notes')]),
+      t('tpl-injury', 'Injury check', [newItem('instruction', 'Pin each injury on the diagram and describe it in its note.'), newItem('body', 'Injuries'), newItem('checks', 'Care', { options: ['Dressed in clinic', 'Referred to the family doctor', 'Sent to emergency'] }), newItem('note', 'Plan')]),
+    ];
+  }
+  // The template library: ready-made psychiatry templates to copy and change, written for this prototype.
+  const LIBRARY = [
+    ['Sleep review', 'Hours, the kind of trouble, and habits.', [['scale', 'Hours of sleep a night', { min: 0, max: 12 }], ['checks', 'Trouble with', { options: ['Falling asleep', 'Staying asleep', 'Waking too early', 'Nightmares', 'Sleepy in the day'] }], ['note', 'Routine and habits'], ['note', 'Plan']]],
+    ['ADHD medication follow-up', 'Medication, vitals, side effects and focus.', [['select', 'Medication', { options: ['None yet', 'Methylphenidate', 'Lisdexamfetamine', 'Atomoxetine', 'Guanfacine'] }], ['vitals', 'Vitals'], ['checks', 'Side effects', { options: ['Less appetite', 'Trouble sleeping', 'Headaches', 'Irritability', 'Racing heart'] }], ['scale', 'Focus this month'], ['note', 'Notes']]],
+    ['Lithium monitoring', 'Bloodwork, side effects and the plan.', [['vitals', 'Vitals'], ['checks', 'Bloodwork done', { options: ['Lithium level', 'Creatinine and eGFR', 'TSH', 'Calcium'] }], ['note', 'Results'], ['checks', 'Side effects', { options: ['Tremor', 'Thirst', 'Passing more urine', 'Weight gain', 'Diarrhea'] }], ['note', 'Plan']]],
+    ['Movement side effects check', 'Where movements are seen, on a body diagram.', [['instruction', 'Pin each place a movement is seen and describe it.'], ['body', 'Movements seen'], ['checks', 'Seen today', { options: ['Tremor', 'Stiffness', 'Restlessness', 'Mouth or face movements', 'None'] }], ['note', 'Notes']]],
+    ['Safety plan', 'Six steps, in the patient’s own words.', [['note', 'Warning signs'], ['note', 'Things I can do on my own'], ['note', 'People and places that take my mind off things'], ['note', 'People I can ask for help'], ['note', 'Professionals and crisis lines'], ['note', 'Making my surroundings safer']]],
+  ].map(([name, about, items]) => ({ id: 'lib-' + name.toLowerCase().replace(/[^a-z]+/g, '-'), name, about, by: 'Template library', items: items.map(([type, label, extra]) => newItem(type, label, extra)) }));
+
+  /* the Day tab */
+  const apptOfVisit = v => S.appts.find(a => a.visitId === v.id);
+  VIEWS.visits = function () {
+    const pg = h('div', { class: 'page wide' });
+    // Opened from elsewhere (Start visit, Notes to sign): turn to the visit's day, pick its appointment, open its entry.
+    const want = ui.visitId && S.visits.find(v => v.id === ui.visitId && P(v.pid));
+    if (want) {
+      const a = apptOfVisit(want);
+      Object.assign(ui, { chartDay: startOfDay(want.start), dayAppt: a ? a.id : null, dayPid: want.pid, dayTab: 'charts', focusEntry: 'v:' + want.id });
+      ui.chartOpen['v:' + want.id] = want.status === 'signed' || role !== 'doctor' ? 'open' : 'edit';
+    }
+    ui.visitId = null;
+    const day = startOfDay(ui.chartDay || clinicDay);
+    const appts = S.appts.filter(a => startOfDay(a.start) === day && a.status !== 'cancelled' && P(a.pid)).sort((x, y) => x.start - y.start);
+    const sel = appts.find(a => a.id === ui.dayAppt) || null;
+    const p = sel ? P(sel.pid) : ui.dayPid ? P(ui.dayPid) : null;
+    pg.append(h('div', { class: 'dayv' + (p ? ' has-sel' : '') }, dayRail(day, appts, sel), p ? h('div', { class: 'day-chart' }, profileView(p, { day: true, appt: sel })) : dayEmpty(day, appts)));
+    setTimeout(() => {
+      const sc = main.querySelector('.dr-scroll'), mark = main.querySelector('.dr-appt.sel') || main.querySelector('.dr-now') || main.querySelector('.dr-appt');
+      if (sc && mark && !sc.dataset.kept) sc.scrollTop = Math.max(0, mark.offsetTop - 60);
+      if (ui.focusEntry) { const el = main.querySelector(`[data-entry="${ui.focusEntry}"]`); ui.focusEntry = null; if (el) el.scrollIntoView({ block: 'start' }); }
+    }, 0);
+    return pg;
+  };
+  // The day down the left, as in Jane: the date, the practitioner, and the day's appointments on a time line.
+  function dayRail(day, appts, sel) {
+    const today = startOfDay(Date.now()), RPX = 1.1;
+    const turn = d => { ui.chartDay = d; ui.dayAppt = null; ui.dayPid = null; render(); };
+    const pick = h('input', { type: 'date', class: 'date-pick', value: ymd(day), 'aria-label': 'Go to a date', title: 'Go to a date' });
+    pick.addEventListener('change', () => { const [y, m, d] = pick.value.split('-').map(Number); if (y) turn(new Date(y, m - 1, d).getTime()); });
+    const gut = h('div', { class: 'dr-gut', style: `height:${(DAY_END - DAY_START) * 60 * RPX}px` });
+    for (let hr = DAY_START + 1; hr < DAY_END; hr++) gut.append(h('span', { style: `top:${(hr - DAY_START) * 60 * RPX}px` }, new Date(2026, 0, 1, hr).toLocaleTimeString('en-CA', { hour: 'numeric' })));
+    const col = h('div', { class: 'dr-col', style: `height:${(DAY_END - DAY_START) * 60 * RPX}px;--hr:${60 * RPX}px` });
+    if (isWeekend(day)) col.append(h('div', { class: 'cal-closed' }, 'Closed'));
+    appts.forEach(a => {
+      const pt = P(a.pid), v = S.visits.find(x => x.id === a.visitId), signed = !!v && v.status === 'signed', here = ['arrived', 'inprogress', 'done'].includes(a.status);
+      const top = ((a.start - day) / MIN - DAY_START * 60) * RPX;
+      col.append(h('button', { type: 'button', class: `dr-appt ${a.type} ${a.status}${a === sel ? ' sel' : ''}${a.mins <= 30 ? ' short' : ''}`, style: `top:${top}px;height:${a.mins * RPX - 2}px`, 'aria-pressed': String(a === sel),
+        'aria-label': `${fmtTime(a.start)} ${pt.name}, ${TYPES[a.type].label}, ${APPT_STATUS[a.status][0]}${signed ? ', note signed' : ''}`,
+        onclick: () => { ui.dayAppt = a.id; ui.dayPid = a.pid; ui.dayTab = 'charts'; renderKeepScroll = true; render(); showOnPhone('.day-chart', 1000); } },
+        h('span', { class: 'dr-t' }, `${fmtTime(a.start)} – ${fmtTime(a.start + a.mins * MIN)}`, signed ? lockIcon() : here ? svgEl(CH_ICON.tick, 'tick') : null),
+        h('b', null, pt.name), a.mins > 30 ? h('small', null, `${TYPES[a.type].label} · ${MODES[a.mode]}`) : null));
+    });
+    if (day === today) { const m = (Date.now() - day) / MIN - DAY_START * 60; if (m > 0 && m < (DAY_END - DAY_START) * 60) col.append(h('div', { class: 'dr-now', style: `top:${m * RPX}px` }, h('span', null, fmtTime(Date.now())))); }
+    const scroll = h('div', { class: 'dr-scroll' }, h('div', { class: 'dr-grid' }, gut, col));
+    scroll.addEventListener('scroll', () => { scroll.dataset.kept = '1'; }, { once: true });
+    return h('aside', { class: 'card dayrail', 'aria-label': 'Day schedule' },
+      h('div', { class: 'dr-date' }, new Date(day).toLocaleDateString('en-CA', { month: 'long', day: 'numeric', year: 'numeric' })),
+      h('div', { class: 'dr-who' }, h('span', { class: 'avatar sm', 'aria-hidden': 'true' }, 'DL'),
+        h('span', { class: 'dr-who-t' }, h('b', null, day === today ? 'Today' : new Date(day).toLocaleDateString('en-CA', { weekday: 'long' })), h('small', null, fmtDay(day)), h('span', null, CLINIC.doctor)),
+        h('span', { class: 'dr-n', title: `${appts.length} appointment${appts.length === 1 ? '' : 's'}` }, String(appts.length))),
+      scroll,
+      h('div', { class: 'dr-foot' },
+        h('div', { class: 'stepper', role: 'group', 'aria-label': 'Change day' }, btn('‹', () => turn(shiftWorkday(day, -1)), null, { 'aria-label': 'Previous day' }), btn('Today', () => turn(clinicDay)), btn('›', () => turn(shiftWorkday(day, 1)), null, { 'aria-label': 'Next day' })),
+        pick, role === 'doctor' ? btn('New visit', () => openNewVisit(), 'small') : null));
+  }
+  function dayEmpty(day, appts) {
+    return h('section', { class: 'card day-empty' }, svgEl(CH_ICON.chart, 'day-empty-ico'),
+      h('h2', null, appts.length ? 'Pick an appointment' : isWeekend(day) ? 'The clinic is closed' : 'No appointments this day'),
+      h('p', { class: 'hint' }, 'Its patient’s chart opens here: every chart entry and the intake form, and the visit’s recording and note.'));
+  }
+  // The patient file's tabs are shown on the Day tab too, so links between them stay where the doctor is.
+  function openTab(p, k) { if (ui.view === 'visits') { ui.dayTab = k; renderKeepScroll = true; render(); } else openPatient(p.id, k); }
+
+  /* the chart: every entry, newest first, with a search and filters */
+  function chartEntries(p) {
+    const out = [];
+    S.visits.filter(v => v.pid === p.id && (v.entry || v.status !== 'scheduled')).forEach(v => out.push({ key: 'v:' + v.id, kind: 'visit', at: v.start, title: visitTitle(v), by: CLINIC.doctor, signed: v.status === 'signed', pinned: !!v.pinned, appt: apptOfVisit(v), v }));
+    S.entries.filter(e => e.pid === p.id).forEach(e => out.push({ key: 'e:' + e.id, kind: 'entry', at: e.at, title: e.title, by: e.by, signed: e.status === 'signed', pinned: !!e.pinned, appt: e.apptId ? S.appts.find(a => a.id === e.apptId) : null, e }));
+    const it = p.intake;
+    if (['done', 'progress'].includes(it.status) && it.A) out.push({ key: 'i:' + p.id, kind: 'intake', at: it.completedAt || it.lastAt || it.sentAt, title: it.status === 'done' ? 'Intake form' : 'Intake form, not finished', by: p.name, signed: it.status === 'done', pinned: !!it.pinned, p });
+    return out.sort((x, y) => (y.pinned - x.pinned) || (y.at - x.at));
+  }
+  const setPinned = (p, x, on) => { (x.kind === 'visit' ? x.v : x.kind === 'entry' ? x.e : p.intake).pinned = on; };
+  const longDate = ms => new Date(ms).toLocaleDateString('en-CA', { month: 'long', day: 'numeric', year: 'numeric' });
+  function chartTab(p, ctx) {
+    const a = ctx && ctx.appt, all = chartEntries(p), filt = ui.chartFilter || 'all';
+    const shown = all.filter(x => (!ui.chartPinned || x.pinned) && (filt === 'all' || (filt === 'signed' ? x.signed && x.kind !== 'intake' : filt === 'draft' ? !x.signed : x.kind === 'intake')));
+    const list = h('div', { class: 'ch-list' }, shown.map(x => entryCard(p, x)));
+    const none = h('p', { class: 'empty ch-none', hidden: true }, 'No chart entries match.');
+    // Today's appointment without its entry yet: start one from the visit's template.
+    const v0 = a && S.visits.find(v => v.id === a.visitId);
+    const startable = role === 'doctor' && a && !['cancelled', 'noshow'].includes(a.status) && (!v0 || (!v0.entry && v0.status === 'scheduled'));
+    const kind = a && a.type === 'consult' ? 'consult' : 'followup';
+    const wrap = h('section', { class: 'chart', 'aria-label': 'Chart' },
+      h('div', { class: 'ch-head' }, h('h2', null, 'Chart entries'), newEntryMenu(p, a)),
+      p.alert ? h('div', { class: 'ch-alert', role: 'note' }, svgEl(CH_ICON.alert, 'ico'), h('b', null, 'Alert'), h('span', null, p.alert)) : null,
+      chartTools(p, all, list, none),
+      startable ? h('div', { class: 'ch-start' }, h('div', { class: 'grow' }, h('b', null, `${dayName(a.start)}, ${fmtTime(a.start)} · ${TYPES[a.type].label} · ${MODES[a.mode]}`), h('small', null, `${APPT_STATUS[a.status][0]}. No chart entry yet; it starts from the ${VISIT_TPL[kind].toLowerCase()} template.`)), btn('Start chart entry', () => startVisit(a, kind), 'primary small')) : null,
+      shown.length ? list : h('p', { class: 'empty' }, all.length ? 'No entries match the filter.' : 'No chart entries yet.'), none);
+    return wrap;
+  }
+  function chartTools(p, all, list, none) {
+    const q = h('input', { type: 'search', placeholder: 'Search', 'aria-label': 'Search the chart', value: ui.chartQ || '' });
+    const authors = [...new Set(all.map(x => x.by))];
+    const by = selectEl('ch-by', [['', 'All authors']].concat(authors.map(n => [n, n])), authors.includes(ui.chartBy) ? ui.chartBy : '');
+    by.classList.add('filter'); by.setAttribute('aria-label', 'Written by');
+    // Search and author filter the entries in place, so typing keeps its place.
+    const apply = () => {
+      ui.chartQ = q.value; ui.chartBy = by.value;
+      const s = q.value.trim().toLowerCase(); let n = 0;
+      list.querySelectorAll('.ce').forEach(el => { const hit = (!s || el.dataset.text.includes(s)) && (!by.value || el.dataset.by === by.value); el.hidden = !hit; if (hit) n++; });
+      none.hidden = n > 0 || !list.children.length;
+    };
+    q.addEventListener('input', apply); by.addEventListener('change', apply);
+    setTimeout(apply, 0);
+    const pinned = all.filter(x => x.pinned).length, filt = ui.chartFilter || 'all';
+    const setF = f => { ui.chartFilter = f; renderKeepScroll = true; render(); };
+    const FILTERS = { all: 'All entries', signed: 'Signed', draft: 'Drafts', intake: 'Intake forms' };
+    const open = all.length && all.every(x => (ui.chartOpen[x.key] || entryMode(x)) !== 'closed');
+    return h('div', { class: 'ch-tools' },
+      h('div', { class: 'search' }, q), by,
+      btn([svgEl(CH_ICON.star, 'ico'), 'Pinned', h('span', { class: 'count' }, String(pinned))], () => { ui.chartPinned = !ui.chartPinned; renderKeepScroll = true; render(); }, ui.chartPinned ? 'small on' : 'small', { 'aria-pressed': String(!!ui.chartPinned) }),
+      btn([svgEl(CH_ICON.alert, 'ico'), 'Alert'], () => openAlert(p), p.alert ? 'small on' : 'small', { title: p.alert ? 'Change the chart alert' : 'Add an alert to the top of the chart' }),
+      moreMenu(Object.entries(FILTERS).map(([k, l]) => [(filt === k ? '✓ ' : '') + l, () => setF(k)]).concat([['Copy the chart as text', () => copyText(all.map(entryText).join('\n\n'))]]), [svgEl(CH_ICON.filter, 'ico'), filt === 'all' ? 'Filter / export' : FILTERS[filt]], 'btn-small' + (filt === 'all' ? '' : ' btn-on')),
+      btn([svgEl(CH_ICON.expand, 'ico'), open ? 'Collapse all' : 'Expand all'], () => { all.forEach(x => { ui.chartOpen[x.key] = open ? 'closed' : x.signed || x.kind === 'intake' || role !== 'doctor' ? 'open' : 'edit'; }); renderKeepScroll = true; render(); }, 'small'));
+  }
+  // An entry opens to read it, or, while it's a draft, to fill it in; drafts start open for the doctor.
+  const entryMode = x => (x.signed || x.kind === 'intake' ? 'closed' : role === 'doctor' ? 'edit' : 'open');
+  function entryCard(p, x) {
+    const st = ui.chartOpen[x.key] || entryMode(x), date = longDate(x.at);
+    const toggle = () => { ui.chartOpen[x.key] = st === 'closed' ? (x.signed || x.kind === 'intake' || role !== 'doctor' ? 'open' : 'edit') : 'closed'; renderKeepScroll = true; render(); };
+    const head = h('header', { class: 'ce-h' },
+      h('button', { type: 'button', class: 'ce-star' + (x.pinned ? ' on' : ''), 'aria-pressed': String(x.pinned), 'aria-label': x.pinned ? 'Unpin' : 'Pin to the top', title: x.pinned ? 'Pinned to the top' : 'Pin to the top', onclick: () => { setPinned(p, x, !x.pinned); persist(); renderKeepScroll = true; render(); } }, svgEl(CH_ICON.star, 'ico')),
+      h('button', { type: 'button', class: 'ce-title', 'aria-expanded': String(st !== 'closed'), onclick: toggle }, h('span', null, date), ' – ', h('b', null, x.title)),
+      h('span', { class: 'ce-meta' },
+        x.appt ? h('span', { class: 'ce-appt', title: `Appointment: ${fmtDay(x.appt.start)}, ${fmtTime(x.appt.start)}` }, svgEl(CH_ICON.cal, 'ico')) : null,
+        x.signed ? h('span', { class: 'ce-lock', title: x.kind === 'intake' ? 'Sent in by the patient' : 'Signed and locked' }, lockIcon()) : h('span', { class: 'ce-draft' }, 'Draft', svgEl(CH_ICON.unlock, 'lock')),
+        h('span', { class: 'ce-by' }, x.by), entryMenu(p, x)));
+    const body = st === 'closed' ? h('p', { class: 'ce-prev', onclick: toggle }, entryPreview(x) || 'Nothing written yet.')
+      : x.kind === 'intake' ? intakeEntry(p)
+      : x.kind === 'visit' ? (st === 'edit' && !x.signed ? visitEditor(p, x.v) : visitRead(p, x.v))
+      : st === 'edit' && !x.signed ? entryEditor(p, x.e) : entryRead(p, x.e);
+    return h('article', { class: 'ce' + (st !== 'closed' ? ' open' : '') + (st === 'edit' && !x.signed ? ' editing' : ''), 'data-entry': x.key, 'data-by': x.by, 'data-text': `${date} ${x.title} ${x.by} ${entryPreview(x)}`.toLowerCase() }, head, body);
+  }
+  function entryMenu(p, x) {
+    const items = [[x.pinned ? 'Unpin' : 'Pin to the top', () => { setPinned(p, x, !x.pinned); persist(); renderKeepScroll = true; render(); }], ['Copy as text', () => copyText(entryText(x))]];
+    if (x.kind === 'visit' && x.signed) {
+      const letter = S.letters.find(l => l.visitId === x.v.id);
+      items.push(letter ? ['Open letter', () => openPatient(p.id, 'letters', { letterId: letter.id })] : ['Create letter to family doctor', () => createLetter(p, x.v)]);
+      if (x.v.note.summary) items.push(['Send summary to patient', () => openSummarySend(p, x.v)]);
+    }
+    if (x.kind === 'intake') items.push(['Open the intake review', () => openTab(p, 'intake')]);
+    if (x.kind === 'entry' && !x.signed && role === 'doctor') items.push(['Delete this draft', () => askDelete(p, x.e), true]);
+    return moreMenu(items, svgEl('<path d="M6 9l6 6 6-6"/>', 'chev'), 'btn-quiet btn-small btn-icon', 'Entry actions');
+  }
+  function askDelete(p, e) {
+    openDialog('Delete this draft?', h('p', null, `“${e.title}” from ${longDate(e.at)} is deleted. It was never signed.`), [btn('Cancel', closeDialog), btn('Delete', () => { closeDialog(); S.entries = S.entries.filter(x => x !== e); logEvent(p.id, `Draft chart entry deleted: ${e.title}`); persist(); toast('Draft deleted.'); render(); }, 'danger')]);
+  }
+  function openAlert(p) {
+    const ta = textEl('alert-' + p.id, p.alert || '', 3);
+    ta.placeholder = 'For example: allergic to penicillin; call her daughter before changing medication.';
+    openDialog('Chart alert', h('div', { class: 'form' }, field('Shown at the top of the chart', ta)), [
+      btn('Cancel', closeDialog),
+      p.alert ? btn('Remove the alert', () => { p.alert = ''; logEvent(p.id, 'Chart alert removed'); persist(); closeDialog(); render(); }) : null,
+      btn('Save', () => { p.alert = ta.value.trim(); if (p.alert) logEvent(p.id, 'Chart alert set'); persist(); closeDialog(); render(); }, 'primary')]);
+  }
+  // The preview under a closed entry: each part's label and what's in it, run together the way a chart list shows them.
+  function entryPreview(x) {
+    if (x.kind === 'intake') return intakePreview(x.p);
+    if (x.kind === 'entry') return x.e.items.map(itemText).filter(Boolean).join(' ');
+    const v = x.v, mse = mseParts(v.note.mse), plan = planParts(v.note.plan), dot = s => s.trim().replace(/[.\s]+$/, '') + '.', bits = [];
+    MSE_PARTS.forEach(([k, l]) => { if ((mse[k] || '').trim()) bits.push(`${l}: ${dot(mse[k])}`); });
+    if ((v.note.impression || '').trim()) bits.push(`Impression: ${dot(v.note.impression)}`);
+    const items = plan.items.filter(t => t.trim());
+    if (items.length) bits.push(`Plan: ${items.map((t, i) => `${i + 1}. ${dot(t)}`).join(' ')}`);
+    (v.extra || []).forEach(it => { const t = itemText(it); if (t) bits.push(t); });
+    if (bits.length) return bits.join(' ');
+    if (rec.vid === v.id) return rec.paused ? 'Recording paused.' : 'Recording…';
+    return v.transcript && v.transcript.length ? `Recorded, ${v.transcript.length} lines; the note isn’t written yet.` : 'Not recorded yet.';
+  }
+  function intakePreview(p) {
+    const it = p.intake, a = it.A || {}, sc = scoresOf(p), bits = [];
+    if (typeof a.reason === 'string' && a.reason !== SKIP && a.reason !== DISCUSS) bits.push(`Main concern: “${clip(a.reason, 220)}”`);
+    if (sc.phq != null) bits.push(`PHQ-9: ${sc.phq}, ${phqBand(sc.phq)}.`);
+    if (sc.gad != null) bits.push(`GAD-7: ${sc.gad}, ${gadBand(sc.gad)}.`);
+    const f = it.status === 'done' ? flags(a) : { urgent: [] };
+    if (f.urgent.length) bits.push(`Safety: ${clip(f.urgent[0], 160)}`);
+    if (it.status !== 'done') bits.push(`${Object.keys(a).length} answers so far.`);
+    return bits.join(' ');
+  }
+  const entryText = x => `${longDate(x.at)} – ${x.title} (${x.by})\n${entryPreview(x)}`;
+  // The intake form, as the patient sent it in: scores, anything flagged, and every answer.
+  function intakeEntry(p) {
+    const it = p.intake, a = it.A || {}, done = it.status === 'done', f = done ? flags(a) : { urgent: [], review: [] }, sc = scoresOf(p);
+    return h('div', { class: 'ce-body' },
+      done ? h('div', { class: 'score-row' }, scoreEl(sc.phq, 'PHQ-9', 27, phqBand, ['moderately severe', 'severe'], ['moderate']), scoreEl(sc.gad, 'GAD-7', 21, gadBand, ['severe'], ['moderate'])) : null,
+      f.urgent.length ? h('p', { class: 'flag-line' }, clip(f.urgent[0], 240)) : null,
+      f.review.length ? itemBlock({ label: 'To look at' }, h('ul', { class: 'ctx-list' }, f.review.map(s => h('li', null, s)))) : null,
+      itemBlock({ label: done ? 'Answers' : 'Answers so far' }, qaList(a)),
+      h('div', { class: 'row' }, btn('Open the intake review', () => openTab(p, 'intake'), 'small'), done ? h('span', { class: 'hint' }, 'The review has the history written with AI, which the consult letter uses.') : null));
+  }
+  const apptLine = a => (a ? h('p', { class: 'ce-appt-l' }, svgEl(CH_ICON.cal, 'ico'), h('b', null, 'Appointment:'), ` ${fmtLong(a.start)}, ${fmtTime(a.start)} · ${TYPES[a.type].label} · ${MODES[a.mode]}`) : null);
+
+  /* new entries */
+  // Like Jane's New Chart Entry: a template, or a single item to start an entry with.
+  function newEntryMenu(p, a) {
+    if (role !== 'doctor') return null;
+    const list = h('div', { class: 'more-list grouped', role: 'menu', hidden: true });
+    const toggle = h('button', { class: 'btn btn-primary more-btn', type: 'button', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: ev => { ev.stopPropagation(); const open = list.hidden; closeMenus(); list.hidden = !open; toggle.setAttribute('aria-expanded', String(open)); if (open) { const f = list.querySelector('button'); if (f) f.focus(); } } },
+      svgEl(CH_ICON.grid, 'ico'), 'New chart entry', svgEl('<path d="M6 9l6 6 6-6"/>', 'chev'));
+    const group = (title, items) => { list.append(h('p', { class: 'acct-h' }, title)); items.forEach(([text, fn, sub]) => list.append(h('button', { type: 'button', role: 'menuitem', onclick: () => { closeMenus(); fn(); } }, h('span', null, text), sub ? h('small', null, sub) : null))); };
+    group('Templates', S.templates.filter(t => t.on).map(t => [t.name, () => useTemplate(p, t, a), t.visit ? 'Records the visit; AI writes the note' : null]));
+    group('Single items', ['note', 'checks', 'body', 'sketch', 'vitals', 'scale', 'file'].map(k => [ITEM_TYPES[k][0], () => newEntry(p, k, a)]));
+    list.append(h('hr', { class: 'acct-sep' }), h('button', { type: 'button', role: 'menuitem', onclick: () => { closeMenus(); go('templates', { tplDraft: null }); } }, 'Manage templates'));
+    return h('div', { class: 'more' }, toggle, list);
+  }
+  function useTemplate(p, t, a) {
+    if (!t.visit) { newEntry(p, t, a); return; }
+    const v = a && S.visits.find(x => x.id === a.visitId);
+    if (a && !['cancelled', 'noshow'].includes(a.status) && (!v || (!v.entry && v.status === 'scheduled'))) { startVisit(a, t.visit); return; }
+    const open = S.visits.find(x => x.pid === p.id && x.status !== 'signed' && (x.entry || x.status !== 'scheduled') && startOfDay(x.start) === startOfDay(Date.now()));
+    if (open) { ui.chartOpen['v:' + open.id] = 'edit'; ui.focusEntry = 'v:' + open.id; renderKeepScroll = true; render(); toast('Today’s note is already open in the chart.'); return; }
+    openNewVisit(p.id, t.visit);
+  }
+  // A chart entry from a template, or with one item, linked to the patient's appointment if it's today's.
+  function newEntry(p, src, a) {
+    const tpl = typeof src === 'object';
+    const e = { id: uid('e'), pid: p.id, at: Date.now(), title: tpl ? src.name : ITEM_TYPES[src][0], by: CLINIC.doctor, status: 'draft', items: tpl ? src.items.map(copyItem) : [newItem(src)], apptId: a && startOfDay(a.start) === startOfDay(Date.now()) ? a.id : null };
+    S.entries.push(e);
+    ui.chartOpen['e:' + e.id] = 'edit'; ui.focusEntry = 'e:' + e.id; ui.chartFilter = 'all'; ui.chartPinned = false;
+    logEvent(p.id, `Chart entry started: ${e.title}`); persist();
+    if (ui.view === 'visits') { renderKeepScroll = true; render(); } else openPatient(p.id, 'charts');
+    setTimeout(() => { const el = main.querySelector(`[data-entry="e:${e.id}"]`); if (el) el.scrollIntoView({ block: 'start' }); }, 0);
+  }
+
+  /* items: filling in, reading, and the line each gives a preview */
+  const bmiOf = v => { const w = parseFloat(v && v.wt), ht = parseFloat(v && v.ht) / 100; return w > 0 && ht > 0 ? (w / (ht * ht)).toFixed(1) : ''; };
+  const vitalsText = v => (!v ? '' : [v.sys && v.dia ? `BP ${v.sys}/${v.dia}` : '', v.hr ? `pulse ${v.hr}` : '', v.wt ? `weight ${v.wt} kg` : '', v.ht ? `height ${v.ht} cm` : '', bmiOf(v) ? `BMI ${bmiOf(v)}` : ''].filter(Boolean).join(', '));
+  const scaleMax = it => (it.max != null ? +it.max : 10);
+  function itemText(it) {
+    const t = it.type, v = it.value;
+    const s = t === 'note' || t === 'select' ? String(v || '').trim()
+      : t === 'checks' ? (v || []).join(', ')
+      : t === 'scale' ? (v == null ? '' : `${v} out of ${scaleMax(it)}`)
+      : t === 'vitals' ? vitalsText(v)
+      : t === 'body' || t === 'sketch' ? (v && (v.pins.length || v.strokes.length) ? [v.pins.map((q, i) => `${i + 1}. ${(q.note || 'marked').trim().replace(/[.\s]+$/, '')}`).join('; '), v.strokes.length && !v.pins.length ? 'drawn on' : ''].filter(Boolean).join('; ') : '')
+      : t === 'signature' ? (v && v.strokes.length ? 'signed' : '')
+      : t === 'file' ? (v || []).map(f => f.name).join(', ')
+      : t === 'mse' ? MSE_PARTS.filter(([k]) => v && (v[k] || '').trim()).map(([k, l]) => `${l}: ${v[k].trim()}`).join('; ')
+      : t === 'plan' ? (v || []).filter(x => x.trim()).map((x, i) => `${i + 1}. ${x.trim()}`).join(' ')
+      : '';
+    return s ? `${it.label}: ${s.replace(/[.\s]+$/, '')}.` : '';
+  }
+  // An item being filled in. It keeps its own value; `save` keeps the entry.
+  function itemEdit(it, save, key) {
+    const t = it.type, id = `it-${key}-${it.id}`.replace(/[^A-Za-z0-9_-]/g, '-');
+    if (t === 'heading') return null;
+    if (t === 'instruction') return h('p', { class: 'it-instr' }, svgEl(ITEM_TYPES.instruction[2], 'ico'), h('span', null, it.label));
+    if (t === 'note') return noteBox(id, it.value || '', 'Type here', x => { it.value = x; save(); }, { attrs: { 'aria-label': it.label } }).box;
+    if (t === 'checks') {
+      const on = new Set(it.value || []);
+      return h('div', { class: 'it-checks' }, (it.options || []).map((o, i) => {
+        const cb = h('input', { type: 'checkbox', id: `${id}-${i}`, checked: on.has(o) || null });
+        cb.addEventListener('change', () => { if (cb.checked) on.add(o); else on.delete(o); it.value = it.options.filter(x => on.has(x)); save(); });
+        return h('label', { class: 'it-check', for: cb.id }, cb, h('span', null, o));
+      }));
+    }
+    if (t === 'select') {
+      const s = selectEl(id, [['', 'Choose…']].concat((it.options || []).map(o => [o, o])), it.value || '');
+      s.classList.add('filter', 'it-select'); s.setAttribute('aria-label', it.label);
+      s.addEventListener('change', () => { it.value = s.value; save(); });
+      return s;
+    }
+    if (t === 'scale') {
+      const min = +it.min || 0, max = scaleMax(it), unset = it.value == null;
+      const r = h('input', { type: 'range', id, min: String(min), max: String(max), step: '1', value: String(unset ? Math.round((min + max) / 2) : it.value), class: unset ? 'unset' : null, 'aria-label': it.label });
+      const out = h('output', { for: id, class: 'it-scale-v' }, unset ? 'Not scored yet' : `${it.value} out of ${max}`);
+      r.addEventListener('input', () => { it.value = +r.value; r.classList.remove('unset'); out.textContent = `${it.value} out of ${max}`; save(); });
+      return h('div', { class: 'it-scale' }, h('span', { class: 'hint' }, String(min)), r, h('span', { class: 'hint' }, String(max)), out);
+    }
+    if (t === 'vitals') {
+      const v = it.value || (it.value = {}), bmi = h('b', null, bmiOf(v) || '–');
+      const box = (k, label, w) => { const i = h('input', { type: 'text', inputmode: 'decimal', id: `${id}-${k}`, value: v[k] || '', 'aria-label': label, style: `width:${w}px` }); i.addEventListener('input', () => { v[k] = i.value.trim(); bmi.textContent = bmiOf(v) || '–'; save(); }); return i; };
+      const one = (label, ...kids) => h('div', { class: 'it-vital' }, h('span', null, label), h('span', { class: 'it-vin' }, kids));
+      return h('div', { class: 'it-vitals' }, one('Blood pressure', box('sys', 'Systolic', 52), '/', box('dia', 'Diastolic', 52), h('small', null, 'mmHg')), one('Pulse', box('hr', 'Pulse', 56), h('small', null, 'bpm')), one('Weight', box('wt', 'Weight', 60), h('small', null, 'kg')), one('Height', box('ht', 'Height', 60), h('small', null, 'cm')), one('BMI', bmi));
+    }
+    if (t === 'body' || t === 'sketch' || t === 'signature') {
+      if (!it.value) it.value = { image: t === 'body' ? it.image || 'body' : t === 'signature' ? 'sign' : 'blank', size: t === 'signature' ? 'small' : 'medium', strokes: [], pins: [] };
+      return drawPad(it.value, { edit: true, pins: t !== 'signature', save, label: it.label, id, kind: t });
+    }
+    if (t === 'file') return fileItem(it, save, true);
+    if (t === 'mse') { const v = it.value || (it.value = {}); return h('div', { class: 'nf' }, MSE_PARTS.map(([k, label]) => { const b = noteBox(`${id}-${k}`, v[k] || '', NOTE_HINTS[k], x => { v[k] = x; save(); }); return nfRow(label, b.box, b.ta.id); })); }
+    if (t === 'plan') return planItem(it, save, id);
+    return null;
+  }
+  function planItem(it, save, id) {
+    const list = it.value && it.value.length ? it.value : (it.value = ['']), wrap = h('div', { class: 'plan-list' });
+    const paint = () => {
+      wrap.textContent = '';
+      list.forEach((t, i) => {
+        const rm = list.length > 1 ? h('button', { class: 'nf-x', type: 'button', 'aria-label': `Remove plan item ${i + 1}`, onclick: () => { list.splice(i, 1); save(); paint(); } }, '×') : null;
+        wrap.append(noteBox(`${id}-${i}`, t, NOTE_HINTS.item, x => { list[i] = x; save(); }, { prefix: h('span', { class: 'nf-num', 'aria-hidden': 'true' }, `${i + 1}.`), suffix: rm, attrs: { 'aria-label': `Plan item ${i + 1}` } }).box);
+      });
+      wrap.append(h('button', { class: 'nf-add', type: 'button', onclick: () => { list.push(''); save(); paint(); const el = $(`${id}-${list.length - 1}`); if (el) el.focus(); } }, '+ Add a plan item'));
+    };
+    paint();
+    return wrap;
+  }
+  function fileItem(it, save, edit) {
+    const files = it.value || (it.value = []), wrap = h('div', { class: 'attach-row' });
+    const pick = h('input', { type: 'file', multiple: true, hidden: true });
+    const paint = () => {
+      wrap.textContent = '';
+      if (edit) wrap.append(btn([svgEl(ITEM_TYPES.file[2], 'clip'), 'Attach a file'], () => pick.click(), 'small'), pick);
+      files.forEach((f, i) => wrap.append(h('span', { class: 'file-chip' }, h('span', null, f.name), edit ? h('button', { type: 'button', 'aria-label': `Remove ${f.name}`, onclick: () => { files.splice(i, 1); save(); paint(); } }, '×') : null)));
+      wrap.append(h('span', { class: 'hint' }, files.length ? 'Listed only: this prototype doesn’t open or keep the files.' : 'Pick a file to list with the entry.'));
+    };
+    pick.addEventListener('change', () => { [...pick.files].forEach(f => files.push({ name: f.name, size: f.size })); pick.value = ''; save(); paint(); });
+    paint();
+    return wrap;
+  }
+  // An item as it reads in a signed entry; nothing when it was left empty.
+  function itemRead(it) {
+    const t = it.type, v = it.value;
+    if (t === 'heading' || t === 'instruction') return null;
+    if (t === 'note' || t === 'select') return v && String(v).trim() ? h('p', { class: 'nf-value' }, v) : null;
+    if (t === 'checks') return (v || []).length ? h('ul', { class: 'it-checks-r' }, (it.options || []).map(o => { const on = v.includes(o); return h('li', { class: on ? 'on' : null }, svgEl(on ? ITEM_TYPES.checks[2] : '<rect x="4" y="4" width="16" height="16" rx="3.5"/>', 'ico'), h('span', null, o)); })) : null;
+    if (t === 'scale') return v == null ? null : h('div', { class: 'it-scale-r' }, h('b', null, `${v} out of ${scaleMax(it)}`), h('span', { class: 'it-meter' }, h('i', { style: `width:${Math.round(((v - (+it.min || 0)) / (scaleMax(it) - (+it.min || 0))) * 100)}%` })));
+    if (t === 'vitals') return vitalsText(v) ? h('p', { class: 'nf-value' }, vitalsText(v)) : null;
+    if (t === 'body' || t === 'sketch' || t === 'signature') return v && (v.strokes.length || v.pins.length) ? drawPad(v, { edit: false, pins: t !== 'signature', label: it.label, kind: t }) : null;
+    if (t === 'file') return v && v.length ? fileItem(it, () => {}, false) : null;
+    if (t === 'mse') { const rows = MSE_PARTS.filter(([k]) => v && (v[k] || '').trim()).map(([k, label]) => nfRow(label, h('p', { class: 'nf-value' }, v[k]))); return rows.length ? h('div', { class: 'nf' }, rows) : null; }
+    if (t === 'plan') { const items = (v || []).filter(x => x.trim()); return items.length ? h('ol', { class: 'plan-read' }, items.map(x => h('li', null, x))) : null; }
+    return null;
+  }
+  // Each item's title, with its actions on the right: clear, change, move and remove.
+  const ACT = {
+    clear: ['Clear', '<path d="M4.5 15.5l8-8 7 7-4 4h-7z"/><path d="M13 20h7"/>'],
+    edit: ['Change', '<path d="M4.5 19.5l3.8-.9L19 7.9 16.1 5 5.4 15.7z"/>'],
+    up: ['Move up', '<path d="M12 19V5M5.5 11.5L12 5l6.5 6.5"/>'],
+    down: ['Move down', '<path d="M12 5v14M18.5 12.5L12 19l-6.5-6.5"/>'],
+    remove: ['Remove', '<path d="M5 7h14M10 7V4.5h4V7M7 7l.9 12.5h8.2L17 7"/>'],
+  };
+  const actBtn = (k, fn, label) => h('button', { type: 'button', class: 'it-act' + (k === 'remove' ? ' danger' : ''), title: ACT[k][0], 'aria-label': `${ACT[k][0]} ${label || ''}`.trim(), onclick: fn }, svgEl(ACT[k][1], 'ico'));
+  function itemBlock(it, body, acts, tag) {
+    const head = it.type === 'heading' ? h('h3', { class: 'it-head' }, it.label) : it.type === 'instruction' ? null : h('h4', { class: 'it-t' }, it.label, tag || null);
+    const tools = acts && acts.length ? h('span', { class: 'it-acts' }, acts) : null;
+    return h('section', { class: 'it is-' + (it.type || 'note') }, head || tools ? h('div', { class: 'it-h' }, head, tools) : null, body);
+  }
+  // Taking a part out asks first, since what was written in it goes with it.
+  function askRemove(label, fn) {
+    openDialog('Remove this part?', h('p', null, `“${label}” comes out of this entry, along with anything written in it.`), [btn('Cancel', closeDialog), btn('Remove', () => { closeDialog(); fn(); }, 'danger')]);
+  }
+  function itemsEdit(list, save, key) {
+    return list.map((it, i) => {
+      const redraw = () => { save(); renderKeepScroll = true; render(); };
+      const acts = [
+        it.type !== 'heading' && it.type !== 'instruction' ? actBtn('clear', () => { delete it.value; redraw(); }, it.label) : null,
+        actBtn('edit', () => openItemSettings(it, redraw), it.label),
+        i ? actBtn('up', () => { list.splice(i - 1, 0, list.splice(i, 1)[0]); redraw(); }, it.label) : null,
+        i < list.length - 1 ? actBtn('down', () => { list.splice(i + 1, 0, list.splice(i, 1)[0]); redraw(); }, it.label) : null,
+        actBtn('remove', () => askRemove(it.label, () => { list.splice(i, 1); redraw(); }), it.label)].filter(Boolean);
+      return itemBlock(it, itemEdit(it, save, key), acts);
+    });
+  }
+  // Under every entry being written: add an item, its settings, who sees it, Close, and Sign.
+  function entryBar(o, x) {
+    const priv = h('input', { type: 'checkbox', checked: o.private || null });
+    priv.addEventListener('change', () => { o.private = priv.checked; persistSoon(); });
+    const who = selectEl(uid('vw'), [['everyone', 'Viewable by everyone'], ['me', 'Viewable by me only']], o.viewable || 'everyone');
+    who.classList.add('filter'); who.setAttribute('aria-label', 'Who can see this entry');
+    who.addEventListener('change', () => { o.viewable = who.value; persistSoon(); });
+    return h('div', { class: 'ce-bar' },
+      h('div', { class: 'ce-bar-row' },
+        btn([svgEl(CH_ICON.grid, 'ico'), 'Add item'], x.add, 'small'),
+        x.gear && x.gear.filter(Boolean).length ? moreMenu(x.gear, svgEl(CH_ICON.gear, 'ico'), 'btn-small btn-icon', 'Entry settings') : null,
+        h('label', { class: 'ce-check', title: 'Kept with the entry; this prototype has no patient portal.' }, priv, 'Not visible to patient'),
+        who, h('span', { class: 'spacer' }), btn('Close', x.close, 'small'), x.signBtn),
+      x.below ? h('div', { class: 'ce-bar-row' }, x.below) : h('p', { class: 'hint' }, x.hint));
+  }
+
+  /* an entry made from a template or a single item */
+  function entryEditor(p, e) {
+    const key = 'e:' + e.id, save = () => persistSoon();
+    const close = () => { ui.chartOpen[key] = 'closed'; persist(); renderKeepScroll = true; render(); };
+    const add = () => openAddItem(src => { (typeof src === 'object' ? src.items.map(copyItem) : [newItem(src)]).forEach(it => e.items.push(it)); persist(); renderKeepScroll = true; render(); });
+    const signBtn = btn(['Sign', lockIcon()], () => {
+      if (!e.items.some(itemText)) { toast('Fill in at least one part first.'); return; }
+      e.status = 'signed'; e.signedAt = Date.now(); ui.chartOpen[key] = 'closed';
+      logEvent(p.id, `${e.title} signed and locked`); persist(); toast('Chart entry signed and locked.'); render();
+    }, 'primary small', { disabled: role !== 'doctor' || null });
+    return h('div', { class: 'ce-body' },
+      e.items.length ? itemsEdit(e.items, save, key) : h('p', { class: 'empty small' }, 'This entry is empty. Add an item below.'),
+      apptLine(e.apptId && S.appts.find(a => a.id === e.apptId)),
+      entryBar(e, { add, gear: [['Copy as text', () => copyText(e.items.map(itemText).filter(Boolean).join('\n'))], ['Delete this draft', () => askDelete(p, e), true]], close, signBtn, hint: role === 'doctor' ? 'Signing locks the entry.' : 'Only Dr. Lee can sign entries.' }));
+  }
+  function entryRead(p, e) {
+    const blocks = e.items.map(it => { if (it.type === 'heading') return itemBlock(it, null); const body = itemRead(it); return body ? itemBlock(it, body) : null; }).filter(Boolean);
+    return h('div', { class: 'ce-body' }, blocks.length ? blocks : h('p', { class: 'empty small' }, 'Nothing was filled in.'),
+      apptLine(e.apptId && S.appts.find(a => a.id === e.apptId)),
+      h('p', { class: 'hint' }, e.status === 'signed' ? sentence(`Signed by ${e.by} ${whenIn(e.signedAt)}`) : 'Draft. Only Dr. Lee can fill it in and sign it.'));
+  }
+
+  /* a visit's note: the visit is recorded inside its entry, then the AI writes the note into its parts */
+  const OPTIONAL_PARTS = { context: 'Notes before the visit', gp: 'For the family doctor', summary: 'Patient summary', interp: 'Not interpreted in the room', files: 'Files' };
+  function visitEditor(p, v) {
+    const key = 'v:' + v.id, mine = rec.vid === v.id, recording = mine && !!(rec.timer || rec.paused), hasT = !!(v.transcript && v.transcript.length);
+    const n = noteParts(p, v), off = new Set(v.off || []), sc = DEMO_TRANSCRIPTS[v.demo] || DEMO_TRANSCRIPTS.generic, extra = v.extra || [];
+    const redraw = () => { persist(); renderKeepScroll = true; render(); };
+    // Parts that can come out of the note: what was written in them goes, and Add item puts them back.
+    const takeOut = k => askRemove(OPTIONAL_PARTS[k], () => { v.off = (v.off || []).concat(k); if (k === 'context') v.context = ''; else if (k === 'files') v.files = []; else n.clear(k); redraw(); });
+    const part = (k, label, body, acts, tag) => (off.has(k) || !body ? null : itemBlock({ label }, body, acts, tag));
+    const clr = k => actBtn('clear', () => n.clear(k), label(k));
+    const out = k => actBtn('remove', () => takeOut(k), OPTIONAL_PARTS[k]);
+    function label(k) { return OPTIONAL_PARTS[k] || { mse: 'the exam', impression: 'the impression', plan: 'the plan' }[k]; }
+    const ctx = noteBox('ctx-' + v.id, v.context || '', 'For example: focus on sleep and the last medication trial; the family doctor asked about ADHD.', x => { v.context = x; persistSoon(); }, { attrs: { 'aria-label': 'Notes before the visit' } });
+    const capture = h('div', { class: 'ce-capture' },
+      h('div', { class: 'ce-capture-row' },
+        h('span', { class: 'ce-capture-t' }, recording && !rec.paused ? h('span', { class: 'live-dot' }) : null, recording ? (rec.paused ? 'Recording paused' : 'Recording') : hasT ? `Recorded · ${v.transcript.length} lines` : 'Not recorded yet'),
+        recControls(v, recording, mine && !!rec.paused, hasT)),
+      needsCall(p) ? h('p', { class: 'flag-line' }, 'This patient still needs a safety follow-up.') : null,
+      h('p', { class: 'hint' }, micReady
+        ? `${transcriber.hint(LANGS[v.lang] || 'English', v.lang || 'en')} ${transcriber.heardBy}, so use made-up voices only. The note is always written in English, and the recording is deleted when you sign.`
+        : `Demo: recording plays a made-up ${sc.lang === 'en' ? 'English' : LANGS[sc.lang]} session${sc.interpreter ? ' with an interpreter' : ''}. The note is always written in English, and the recording is deleted when you sign.` + (offClaude ? ' To record from the microphone, open this page in Chrome, Edge or Safari.' : '')));
+    const add = () => openAddItem(src => {
+      if (src && src.putBack) { v.off = (v.off || []).filter(k => k !== src.putBack); redraw(); return; }
+      (typeof src === 'object' ? src.items.map(copyItem) : [newItem(src)]).forEach(it => extra.push(it)); v.extra = extra; redraw();
+    }, { putBack: Object.keys(OPTIONAL_PARTS).filter(k => off.has(k)).map(k => ({ putBack: k, label: OPTIONAL_PARTS[k] })) });
+    const close = () => { if (recording) { toast('Stop the recording first.'); return; } ui.chartOpen[key] = 'closed'; renderKeepScroll = true; render(); };
+    return h('div', { class: 'ce-body' },
+      capture,
+      part('context', 'Notes before the visit', h('div', { class: 'stack' }, ctx.box, h('p', { class: 'hint' }, 'Background for the AI. Only what’s said in the visit goes into the note.')), [actBtn('clear', () => { v.context = ''; redraw(); }, OPTIONAL_PARTS.context), out('context')]),
+      itemBlock({ label: 'Visit recording' }, transcriptTab(v, recording)),
+      n.ai,
+      part('mse', 'Mental status examination', n.mse, [clr('mse')]),
+      part('impression', 'Impression', n.impression, [clr('impression')]),
+      part('plan', 'Plan', n.plan, [clr('plan')]),
+      part('gp', 'For the family doctor', n.gp, [clr('gp'), out('gp')]),
+      part('summary', 'Patient summary', n.summary, [clr('summary'), out('summary')], h('span', { class: 'tag' }, 'Sent after signing')),
+      part('interp', 'Not interpreted in the room', n.interp, [clr('interp'), out('interp')]),
+      itemsEdit(extra, () => { v.extra = extra; persistSoon(); }, key),
+      part('files', 'Files', attachRow(v), [out('files')]),
+      n.ask,
+      apptLine(apptOfVisit(v)),
+      entryBar(v, { add, gear: n.gear, close, signBtn: n.signBtn, below: n.below }));
+  }
+  function visitRead(p, v) {
+    const signed = v.status === 'signed', letter = S.letters.find(l => l.visitId === v.id), mse = mseParts(v.note.mse), plan = planParts(v.note.plan);
+    const para = t => (t && t.trim() ? h('p', { class: 'nf-value' + (TO_CONFIRM.test(t) ? ' nf-confirm' : '') }, t) : null);
+    const block = (label, body) => (body ? itemBlock({ label }, body) : null);
+    const exam = MSE_PARTS.filter(([k]) => (mse[k] || '').trim()).map(([k, label]) => nfRow(label, para(mse[k])));
+    const items = plan.items.filter(t => t.trim());
+    return h('div', { class: 'ce-body' },
+      block('Mental status examination', exam.length ? h('div', { class: 'nf' }, exam) : null),
+      block('Impression', para(v.note.impression)),
+      block('Plan', items.length ? h('ol', { class: 'plan-read' }, items.map(t => h('li', null, t))) : null),
+      block('For the family doctor', para(plan.gp)),
+      block('Patient summary', para(v.note.summary)),
+      block('Not interpreted in the room', para(v.note.interp)),
+      (v.extra || []).map(it => { const b = itemRead(it); return it.type === 'heading' ? itemBlock(it, null) : b ? itemBlock(it, b) : null; }),
+      (v.files || []).length ? block('Files', h('div', { class: 'attach-row' }, v.files.map(f => h('span', { class: 'file-chip' }, h('span', null, f.name))))) : null,
+      signed ? h('div', { class: 'row' }, letter ? btn('Open letter', () => openPatient(p.id, 'letters', { letterId: letter.id }), 'primary small') : btn('Create letter to family doctor', ev => createLetter(p, v, ev.currentTarget), 'primary small'),
+        v.note.summary ? btn('Send summary to patient', () => openSummarySend(p, v), 'small') : null,
+        role === 'doctor' ? btn('New prescription', () => openRx(p), 'small') : null) : null,
+      apptLine(apptOfVisit(v)),
+      h('p', { class: 'hint' }, signed ? sentence(`Signed by ${CLINIC.doctor} ${whenIn(v.signedAt)}`) + (v.audioDeleted ? ' The recording was deleted.' : '') + ' MSP billing is not connected in this prototype.' : 'Draft. Only Dr. Lee can write and sign the note.'));
+  }
+
+  /* drawing: a body diagram or a blank page to pin numbered notes to and draw on */
+  // A body outline drawn for this prototype: the left half of a figure from the neck down, mirrored for the right.
+  const FIG = [[[70, 90], [52, 94], [46, 108]], [[40, 124], [38, 160], [36, 196]], [[34, 222], [30, 248], [28, 268]], [[27, 280], [30, 290], [36, 288]], [[40, 286], [40, 276], [41, 268]], [[44, 246], [50, 222], [54, 198]], [[58, 176], [60, 150], [64, 132]], [[66, 160], [66, 190], [64, 214]], [[62, 236], [64, 250], [66, 262]], [[66, 300], [68, 340], [72, 378]], [[73, 388], [70, 394], [78, 396]], [[84, 397], [90, 397], [94, 396]], [[96, 388], [94, 380], [94, 372]], [[94, 336], [96, 300], [98, 276]], [[99, 272], [100, 268], [100, 266]]];
+  function figure(dx, back) {
+    const pt = ([x, y]) => `${x + dx},${y}`, mir = ([x, y]) => `${200 - x + dx},${y}`, x = n => n + dx, starts = [[88, 86]];
+    let d = `M${pt([88, 86])}`;
+    FIG.forEach(([c1, c2, e]) => { d += ` C${pt(c1)} ${pt(c2)} ${pt(e)}`; starts.push(e); });
+    for (let i = FIG.length - 1; i >= 0; i--) d += ` C${mir(FIG[i][1])} ${mir(FIG[i][0])} ${mir(starts[i])}`;
+    return `<ellipse cx="${x(100)}" cy="44" rx="21" ry="27"/><path d="M${x(91)},68 L${x(88)},86 M${x(109)},68 L${x(112)},86"/><path d="${d}"/>`
+      + (back ? `<path class="faint" d="M${x(100)},98 L${x(100)},232 M${x(80)},112 q-6,16 6,30 M${x(120)},112 q6,16 -6,30"/>` : `<path class="faint" d="M${x(84)},97 Q${x(100)},104 ${x(116)},97"/>`)
+      + `<text class="lbl" x="${x(100)}" y="414">${back ? 'Back' : 'Front'}</text>`;
+  }
+  const PAD_IMAGES = {
+    body: { name: 'Body, front and back', w: 400, h: 420, art: () => figure(0, false) + figure(200, true) },
+    head: { name: 'Head and face', w: 400, h: 420, art: () => '<ellipse cx="200" cy="190" rx="105" ry="140"/><path d="M95 190 q-22 -6 -20 22 q4 30 24 26 M305 190 q22 -6 20 22 q-4 30 -24 26"/><path class="faint" d="M150 170 q15 -10 30 0 M220 170 q15 -10 30 0 M200 200 v40 q-8 6 -14 2 M168 280 q32 20 64 0"/><path d="M160 320 L156 405 M240 320 L244 405"/>' },
+    blank: { name: 'Blank page', w: 400, h: 300, art: () => '' },
+    sign: { name: 'Signature line', w: 400, h: 140, art: () => '<path class="faint" d="M20 112 H380"/>' },
+  };
+  // The page stays white in dark mode, like paper, so the inks don't follow the theme.
+  const INKS = { ink: '#1D1D1F', red: '#E0281E', blue: '#0071E3' };
+  const WIDTHS = [2, 4, 8];
+  function drawPad(val, o) {
+    if (!val.strokes) val.strokes = [];
+    if (!val.pins) val.pins = [];
+    const ns = 'http://www.w3.org/2000/svg', wrap = h('div', { class: `pad pad-${val.size || 'medium'}${o.edit ? ' edit' : ''}` });
+    const svg = document.createElementNS(ns, 'svg'), art = document.createElementNS(ns, 'g'), ink = document.createElementNS(ns, 'g'), pinsG = document.createElementNS(ns, 'g');
+    svg.setAttribute('class', 'pad-svg'); svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', o.label || 'Drawing');
+    art.setAttribute('class', 'pad-art'); ink.setAttribute('class', 'pad-ink'); pinsG.setAttribute('class', 'pad-pins');
+    svg.append(art, ink, pinsG);
+    const notes = h('ol', { class: 'pad-notes' });
+    const st = { tool: o.kind === 'body' ? 'pin' : 'pen', w: 0, c: 'ink' }, undo = [], redo = [];
+    const snap = () => JSON.stringify({ strokes: val.strokes, pins: val.pins });
+    const keep = () => { undo.push(snap()); if (undo.length > 60) undo.shift(); redo.length = 0; };
+    const restore = s => { const x = JSON.parse(s); val.strokes = x.strokes; val.pins = x.pins; };
+    const saved = () => { if (o.save) o.save(); };
+    const pathD = s => 'M' + s.p.map(q => q.join(',')).join(' L');
+    const drawArt = () => { const im = PAD_IMAGES[val.image] || PAD_IMAGES.blank; svg.setAttribute('viewBox', `0 0 ${im.w} ${im.h}`); art.innerHTML = im.art(); };
+    function paint() {
+      ink.textContent = ''; pinsG.textContent = '';
+      val.strokes.forEach((s, i) => { const e = document.createElementNS(ns, 'path'); e.setAttribute('d', pathD(s)); e.setAttribute('data-i', String(i)); e.style.stroke = INKS[s.c] || INKS.ink; e.style.strokeWidth = String(s.w); ink.append(e); });
+      val.pins.forEach((q, i) => { const g = document.createElementNS(ns, 'g'); g.setAttribute('transform', `translate(${q.x},${q.y})`); g.innerHTML = `<circle r="11"/><text dy="4">${i + 1}</text>`; pinsG.append(g); });
+      if (!o.pins) return;
+      // The pins' notes, numbered to match.
+      notes.textContent = '';
+      val.pins.forEach((q, i) => {
+        const num = h('span', { class: 'pad-num', 'aria-hidden': 'true' }, String(i + 1));
+        if (!o.edit) { notes.append(h('li', null, num, h('span', null, q.note || 'Marked, no note.'))); return; }
+        const b = noteBox(`${o.id}-pin-${i}`, q.note || '', 'What’s here', x => { q.note = x; saved(); }, { attrs: { 'aria-label': `Note for mark ${i + 1}` } });
+        notes.append(h('li', null, num, b.box, h('button', { class: 'nf-x', type: 'button', 'aria-label': `Remove mark ${i + 1}`, onclick: () => { keep(); val.pins.splice(i, 1); paint(); saved(); } }, '×')));
+      });
+      notes.hidden = !val.pins.length;
+    }
+    drawArt(); paint();
+    if (!o.edit) { wrap.append(h('div', { class: 'pad-canvas' }, svg), o.pins ? notes : null); return wrap; }
+    // Tools down the side, the way drawing apps have them.
+    const tools = h('div', { class: 'pad-tools', role: 'toolbar', 'aria-label': 'Drawing tools' });
+    const tb = (label, kid, fn, on) => h('button', { type: 'button', class: 'pad-tool', title: label, 'aria-label': label, 'aria-pressed': on == null ? null : String(on), onclick: fn }, kid);
+    const paintTools = () => {
+      tools.textContent = '';
+      const use = (k, v) => () => { st[k] = v; if (k !== 'tool' && st.tool !== 'pen') st.tool = 'pen'; paintTools(); };
+      if (o.pins) tools.append(tb('Pin a numbered note', svgEl('<path d="M12 21s-6-5.6-6-11a6 6 0 0 1 12 0c0 5.4-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/>', 'ico'), use('tool', 'pin'), st.tool === 'pin'));
+      tools.append(tb('Draw', svgEl(ITEM_TYPES.sketch[2], 'ico'), use('tool', 'pen'), st.tool === 'pen'), tb('Erase a line', svgEl(ACT.clear[1], 'ico'), use('tool', 'erase'), st.tool === 'erase'), h('span', { class: 'pad-sep' }));
+      WIDTHS.forEach((w, i) => tools.append(tb(['Thin line', 'Medium line', 'Thick line'][i], h('i', { class: 'pad-dot', style: `width:${3 + i * 3}px;height:${3 + i * 3}px` }), use('w', i), st.w === i)));
+      tools.append(h('span', { class: 'pad-sep' }));
+      Object.keys(INKS).forEach(c => tools.append(tb({ ink: 'Black ink', red: 'Red ink', blue: 'Blue ink' }[c], h('i', { class: 'pad-swatch', style: `background:${INKS[c]}` }), use('c', c), st.c === c)));
+      tools.append(h('span', { class: 'pad-sep' }),
+        tb('Undo', svgEl('<path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>', 'ico'), () => { if (!undo.length) return; redo.push(snap()); restore(undo.pop()); paint(); saved(); }),
+        tb('Redo', svgEl('<path d="M15 14l5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/>', 'ico'), () => { if (!redo.length) return; undo.push(snap()); restore(redo.pop()); paint(); saved(); }),
+        tb('Clear the drawing', svgEl('<path d="M6 6l12 12M18 6L6 18"/>', 'ico'), () => { if (!val.strokes.length && !val.pins.length) return; keep(); val.strokes = []; val.pins = []; paint(); saved(); }));
+    };
+    paintTools();
+    const at = ev => { const m = svg.getScreenCTM(); if (!m) return [0, 0]; const q = new DOMPoint(ev.clientX, ev.clientY).matrixTransform(m.inverse()); return [Math.round(q.x * 10) / 10, Math.round(q.y * 10) / 10]; };
+    let cur = null, curEl = null;
+    const erase = ev => { const el = document.elementFromPoint(ev.clientX, ev.clientY), line = el && el.closest ? el.closest('.pad-ink path') : null; if (!line || !ink.contains(line)) return; keep(); val.strokes.splice(+line.getAttribute('data-i'), 1); paint(); saved(); };
+    svg.addEventListener('pointerdown', ev => {
+      if (ev.button > 0) return;
+      ev.preventDefault();
+      const q = at(ev);
+      if (st.tool === 'pin') { keep(); val.pins.push({ x: q[0], y: q[1], note: '' }); paint(); saved(); const ta = $(`${o.id}-pin-${val.pins.length - 1}`); if (ta) ta.focus(); return; }
+      try { svg.setPointerCapture(ev.pointerId); } catch (e) { /* the line still draws while the pointer stays on the page */ }
+      if (st.tool === 'erase') { erase(ev); return; }
+      keep(); cur = { c: st.c, w: WIDTHS[st.w], p: [q] }; val.strokes.push(cur);
+      curEl = document.createElementNS(ns, 'path'); curEl.style.stroke = INKS[cur.c]; curEl.style.strokeWidth = String(cur.w); curEl.setAttribute('d', pathD(cur)); ink.append(curEl);
+    });
+    svg.addEventListener('pointermove', ev => {
+      if (st.tool === 'erase') { if (ev.buttons) erase(ev); return; }
+      if (!cur) return;
+      const q = at(ev), last = cur.p[cur.p.length - 1];
+      if (Math.hypot(q[0] - last[0], q[1] - last[1]) < 1.5) return;
+      cur.p.push(q); curEl.setAttribute('d', pathD(cur));
+    });
+    const end = () => { if (!cur) return; if (cur.p.length === 1) cur.p.push([cur.p[0][0] + 0.1, cur.p[0][1] + 0.1]); cur = null; curEl = null; paint(); saved(); };
+    svg.addEventListener('pointerup', end); svg.addEventListener('pointercancel', end);
+    const under = o.kind === 'signature' ? null : (() => {
+      const size = selectEl(`${o.id}-size`, [['small', 'Small'], ['medium', 'Medium'], ['large', 'Large']], val.size || 'medium');
+      size.classList.add('filter'); size.setAttribute('aria-label', 'Image size');
+      size.addEventListener('change', () => { val.size = size.value; wrap.className = `pad pad-${val.size} edit`; saved(); });
+      const pickImg = moreMenu(Object.entries(PAD_IMAGES).filter(([k]) => k !== 'sign').map(([k, im]) => [(val.image === k ? '✓ ' : '') + im.name, () => { val.image = k; drawArt(); saved(); }]), [svgEl(CH_ICON.image, 'ico'), 'Change image'], 'btn-small');
+      return h('div', { class: 'pad-under' }, pickImg, h('label', { class: 'pad-size' }, 'Image size', size), h('span', { class: 'hint' }, o.pins ? 'Pick the pin, then click the diagram to add a numbered note.' : ''));
+    })();
+    wrap.append(h('div', { class: 'pad-main' }, tools, h('div', { class: 'pad-canvas' }, svg)), under, o.pins ? notes : null);
+    return wrap;
+  }
+
+  /* adding items, their settings, and the template library */
+  // Add item: an item of any kind, every item from one of your templates, or from the template library.
+  function openAddItem(onPick, opts) {
+    const o = opts || {}, mine = S.templates.filter(t => !t.visit && t.items.length), lib = LIBRARY.concat(S.templates.filter(t => t.shared && !t.visit));
+    let tab = 'items';
+    const q = h('input', { type: 'search', placeholder: 'Search', 'aria-label': 'Search items' }), seg = h('div', { class: 'seg', role: 'group', 'aria-label': 'Add from' }), grid = h('div', { class: 'ai-grid' });
+    const pick = src => { closeDialog(); onPick(src); };
+    const card = (icon, title, about, fn) => h('button', { type: 'button', class: 'ai-card', 'data-s': `${title} ${about}`.toLowerCase(), onclick: fn }, svgEl(icon, 'ico'), h('span', null, h('b', null, title), h('small', null, about)));
+    const filter = () => { const s = q.value.trim().toLowerCase(); grid.querySelectorAll('.ai-card').forEach(c => { c.hidden = !!s && !c.dataset.s.includes(s); }); };
+    const paint = () => {
+      seg.textContent = '';
+      [['items', 'Items', Object.keys(ITEM_TYPES).length], ['templates', 'Your templates', mine.length], ['library', 'Template library', lib.length]].forEach(([k, l, n]) => seg.append(h('button', { type: 'button', 'aria-pressed': String(tab === k), onclick: () => { tab = k; paint(); } }, l, ' ', h('span', { class: 'count' }, String(n)))));
+      grid.textContent = '';
+      if (tab === 'items') {
+        (o.putBack || []).forEach(pb => grid.append(card(ITEM_TYPES.note[2], `Put back: ${pb.label}`, 'A part of the note that was taken out.', () => pick(pb))));
+        Object.entries(ITEM_TYPES).forEach(([k, [name, about, icon]]) => grid.append(card(icon, name, about, () => pick(k))));
+      } else (tab === 'templates' ? mine : lib).forEach(t => grid.append(card(CH_ICON.book, t.name, t.about || `${t.items.length} items · ${t.by}`, () => pick(t))));
+      if (!grid.children.length) grid.append(h('p', { class: 'empty small' }, tab === 'templates' ? 'No templates of your own yet. Make one under Templates in the name menu.' : 'Nothing here yet.'));
+      filter();
+    };
+    q.addEventListener('input', filter);
+    paint();
+    openDialog('Add item', h('div', { class: 'stack' }, h('div', { class: 'ai-top' }, seg, h('div', { class: 'search' }, q)), grid), [btn('Cancel', closeDialog)], true);
+  }
+  function openItemSettings(it, done) {
+    const words = it.type === 'heading' || it.type === 'instruction';
+    const label = words ? textEl('is-label', it.label, 2) : inputEl('is-label', it.label, { maxlength: '80' });
+    const parts = [field(it.type === 'heading' ? 'Heading' : it.type === 'instruction' ? 'Instruction' : 'Label', label)];
+    let choices = null, lo = null, hi = null, img = null;
+    if (it.type === 'checks' || it.type === 'select') { choices = textEl('is-opts', (it.options || []).join('\n'), 6); parts.push(field('Choices', choices, 'One per line.')); }
+    if (it.type === 'scale') { lo = inputEl('is-min', it.min, { type: 'number' }); hi = inputEl('is-max', it.max, { type: 'number' }); parts.push(h('div', { class: 'form-grid c2' }, field('Lowest', lo), field('Highest', hi))); }
+    if (it.type === 'body') { img = selectEl('is-img', Object.entries(PAD_IMAGES).filter(([k]) => k !== 'sign').map(([k, im]) => [k, im.name]), it.image || 'body'); parts.push(field('Image', img)); }
+    openDialog(ITEM_TYPES[it.type][0], h('div', { class: 'form' }, parts), [btn('Cancel', closeDialog), btn('Done', () => {
+      const l = label.value.trim(); if (!l) { label.focus(); return; }
+      if (choices) {
+        const list = [...new Set(choices.value.split('\n').map(s => s.trim()).filter(Boolean))];
+        if (!list.length) { choices.focus(); toast('Add at least one choice.'); return; }
+        it.options = list;
+        if (Array.isArray(it.value)) it.value = it.value.filter(x => list.includes(x)); else if (it.value && !list.includes(it.value)) delete it.value;
+      }
+      if (lo) {
+        const a = parseInt(lo.value, 10), b = parseInt(hi.value, 10);
+        if (!(b > a)) { hi.focus(); toast('The highest has to be more than the lowest.'); return; }
+        it.min = a; it.max = b; if (it.value != null && (it.value < a || it.value > b)) delete it.value;
+      }
+      if (img) { it.image = img.value; if (it.value) it.value.image = img.value; }
+      it.label = l; closeDialog(); done();
+    }, 'primary')]);
+  }
+  function openLibrary() {
+    const lib = LIBRARY.concat(S.templates.filter(t => t.shared && !t.visit).map(t => Object.assign({}, t, { about: `Shared by ${t.by}` })));
+    let sel = lib[0];
+    const q = h('input', { type: 'search', placeholder: 'Search the library', 'aria-label': 'Search the library' });
+    const list = h('div', { class: 'lib-list', role: 'listbox', 'aria-label': 'Templates' }), prev = h('div', { class: 'lib-prev' });
+    const paint = () => {
+      const s = q.value.trim().toLowerCase();
+      list.textContent = '';
+      lib.filter(t => !s || `${t.name} ${t.about || ''}`.toLowerCase().includes(s)).forEach(t => list.append(h('button', { type: 'button', role: 'option', class: 'lib-item', 'aria-selected': String(t === sel), onclick: () => { sel = t; paint(); } }, h('b', null, t.name), h('small', null, t.about || ''), h('small', null, `${t.items.length} items · ${t.by}`))));
+      prev.textContent = '';
+      if (!sel) return;
+      prev.append(h('h3', null, sel.name), h('ul', { class: 'tp-parts' }, sel.items.map(it => h('li', null, svgEl(ITEM_TYPES[it.type][2], 'ico'), h('span', null, it.label), h('small', null, ITEM_TYPES[it.type][0])))),
+        role === 'doctor' ? btn('Add to my templates', () => { const c = { id: uid('tpl'), name: sel.name, by: CLINIC.doctor, on: true, items: sel.items.map(copyItem) }; S.templates.push(c); persist(); closeDialog(); toast(`${c.name} is now one of your templates.`); if (ui.view === 'templates') render(); }, 'primary small') : null);
+    };
+    q.addEventListener('input', paint);
+    paint();
+    openDialog('Template library', h('div', { class: 'stack' }, h('div', { class: 'search' }, q), h('div', { class: 'lib' }, list, prev), h('p', { class: 'hint' }, 'Ready-made psychiatry templates to copy and change, written for this prototype, and any you share.')), [btn('Close', closeDialog)], true);
+  }
+
+  /* Templates, under the name menu, like a practitioner's own templates in Jane */
+  VIEWS.templates = function () {
+    if (ui.tplDraft) return templateBuilder(ui.tplDraft);
+    const pg = h('div', { class: 'page' }), surveys = ui.tplTab === 'surveys';
+    pg.append(pageHead(CLINIC.doctor, 'Psychiatrist · the templates chart entries are made from', [btn([svgEl(CH_ICON.book, 'ico'), 'Template library'], () => openLibrary()), role === 'doctor' ? btn([svgEl(CH_ICON.plus, 'ico'), 'New template'], () => editTemplate(null), 'primary') : null]));
+    pg.append(h('div', { class: 'seg', role: 'group', 'aria-label': 'Kind of template' }, [['charts', 'Chart templates'], ['surveys', 'Surveys']].map(([k, l]) => h('button', { type: 'button', 'aria-pressed': String((surveys ? 'surveys' : 'charts') === k), onclick: () => { ui.tplTab = k; render(); } }, l))));
+    if (surveys) {
+      pg.append(h('section', { class: 'card' }, h('table', { class: 'tbl tp-tbl' }, h('thead', null, h('tr', null, h('th', null, 'Name'), h('th', null, 'Filled in by'))), h('tbody', null,
+        h('tr', null, h('td', null, h('b', null, 'Psychiatric intake questionnaire'), h('small', { class: 'tp-by' }, 'Demo Clinic · fixed questions, one at a time; the finished form shows in the patient’s chart')), h('td', null, 'The patient, on their phone'))))));
+      return pg;
+    }
+    const q = h('input', { type: 'search', placeholder: 'Search templates', 'aria-label': 'Search templates' });
+    const tbody = h('tbody', null, S.templates.map(t => {
+      const sw = h('input', { type: 'checkbox', role: 'switch', class: 'switch', checked: t.on || null, disabled: !!t.visit || role !== 'doctor' || null, 'aria-label': `${t.name}: offered in New chart entry` });
+      sw.addEventListener('change', () => { t.on = sw.checked; persist(); toast(t.on ? `${t.name} is offered in New chart entry.` : `${t.name} is hidden from New chart entry.`); });
+      const about = t.visit ? 'Demo Clinic · every visit’s note' : `${t.by} · ${t.items.length} item${t.items.length === 1 ? '' : 's'}${t.shared ? ' · shared to the library' : ''}`;
+      return h('tr', { 'data-name': t.name.toLowerCase() }, h('td', null, sw), h('td', null, h('b', null, t.name), h('small', { class: 'tp-by' }, about)), h('td', { class: 'tp-act' }, t.visit || role !== 'doctor' ? btn('View', () => viewTemplate(t), 'small') : btn('Edit', () => editTemplate(t), 'small')));
+    }));
+    q.addEventListener('input', () => { const s = q.value.trim().toLowerCase(); tbody.querySelectorAll('tr').forEach(tr => { tr.hidden = !!s && !tr.dataset.name.includes(s); }); });
+    pg.append(h('section', { class: 'card stack' }, h('div', { class: 'search' }, q), h('table', { class: 'tbl tp-tbl' }, h('thead', null, h('tr', null, h('th', null, 'Available'), h('th', null, 'Name'), h('th', null, h('span', { class: 'visually-hidden' }, 'Actions')))), tbody)));
+    return pg;
+  };
+  function viewTemplate(t) {
+    const parts = t.visit ? VISIT_PARTS : t.items.map(it => [it.type, it.label]);
+    openDialog(t.name, h('div', { class: 'stack' },
+      h('p', { class: 'hint' }, t.visit ? 'Every visit’s note is made from this template. The visit fills it in: the recording first, then the AI’s note, which the doctor checks and signs.' : `By ${t.by}.`),
+      h('ul', { class: 'tp-parts' }, parts.map(([type, label]) => h('li', null, svgEl(type === 'recording' ? ICONS.visits : ITEM_TYPES[type][2], 'ico'), h('span', null, label), h('small', null, type === 'recording' ? 'Recording' : ITEM_TYPES[type][0]))))),
+      [t.visit || role !== 'doctor' ? null : btn('Duplicate', () => { closeDialog(); duplicateTemplate(t); }), btn('Close', closeDialog, 'primary')]);
+  }
+  function editTemplate(t) {
+    ui.tplDraft = t ? JSON.parse(JSON.stringify(t)) : { id: uid('tpl'), name: 'New template', by: CLINIC.doctor, on: true, items: [], isNew: true };
+    ui.tplTab = 'charts';
+    if (ui.view === 'templates') render(); else go('templates');
+  }
+  function duplicateTemplate(t) {
+    const c = Object.assign(JSON.parse(JSON.stringify(t)), { id: uid('tpl'), name: `${t.name} (copy)`.slice(0, 60), by: CLINIC.doctor, shared: false, isNew: true });
+    c.items = c.items.map(copyItem);
+    editTemplate(c); ui.tplDraft = c;
+    if (ui.view === 'templates') render();
+  }
+  function openRename(t, done) {
+    const inp = inputEl('tp-name', t.name, { maxlength: '60' }), left = h('span', { class: 'hint' }, String(60 - t.name.length));
+    inp.addEventListener('input', () => { left.textContent = String(60 - inp.value.length); });
+    openDialog('Template name', h('div', { class: 'form' }, h('label', { class: 'fld', for: 'tp-name' }, h('span', { class: 'fld-l tp-name-l' }, h('span', null, 'Name'), left), inp)), [btn('Cancel', closeDialog), btn('Done', () => { const v = inp.value.trim(); if (!v) { inp.focus(); return; } t.name = v; closeDialog(); done(); }, 'primary')]);
+  }
+  // Building a template: each item shown the way it will look in an entry, with its settings, order and removal.
+  function templateBuilder(t) {
+    const pg = h('div', { class: 'page' });
+    const finish = keep => {
+      if (keep) { delete t.isNew; const i = S.templates.findIndex(x => x.id === t.id); if (i >= 0) S.templates[i] = t; else S.templates.push(t); persist(); toast(`${t.name} saved.`); }
+      ui.tplDraft = null; render();
+    };
+    const redraw = () => { renderKeepScroll = true; render(); };
+    pg.append(h('div', { class: 'page-head' },
+      h('div', { class: 'title-block' }, h('p', { class: 'subtitle' }, `${CLINIC.doctor} · Templates`), h('div', { class: 'tp-name' }, h('h1', null, t.name), btn(svgEl(ACT.edit[1], 'ico'), () => openRename(t, redraw), 'quiet small icon', { 'aria-label': 'Rename the template', title: 'Rename' }))),
+      h('div', { class: 'head-actions' }, btn('Duplicate', () => duplicateTemplate(t)), btn('Cancel', () => finish(false)), btn('Save', () => finish(true), 'primary'))));
+    const blocks = t.items.map((it, i) => {
+      const acts = [actBtn('edit', () => openItemSettings(it, redraw), it.label),
+        i ? actBtn('up', () => { t.items.splice(i - 1, 0, t.items.splice(i, 1)[0]); redraw(); }, it.label) : null,
+        i < t.items.length - 1 ? actBtn('down', () => { t.items.splice(i + 1, 0, t.items.splice(i, 1)[0]); redraw(); }, it.label) : null,
+        actBtn('remove', () => askRemove(it.label, () => { t.items.splice(i, 1); redraw(); }), it.label)].filter(Boolean);
+      // How it will look in an entry, without keeping anything typed into it.
+      const body = itemEdit(JSON.parse(JSON.stringify(it)), () => {}, 'tpl');
+      return itemBlock(it, body ? h('div', { class: 'it-design', inert: '' }, body) : null, acts);
+    });
+    const add = () => openAddItem(src => { (typeof src === 'object' ? src.items.map(copyItem) : [newItem(src)]).forEach(it => t.items.push(it)); redraw(); });
+    const del = () => openDialog('Delete this template?', h('p', null, `“${t.name}” is deleted. Entries already made from it keep what they hold.`), [btn('Cancel', closeDialog), btn('Delete', () => { closeDialog(); S.templates = S.templates.filter(x => x.id !== t.id); persist(); ui.tplDraft = null; toast('Template deleted.'); render(); }, 'danger')]);
+    pg.append(h('section', { class: 'card tp-build' },
+      blocks.length ? h('div', { class: 'ce-body' }, blocks) : h('p', { class: 'empty' }, 'Add items below to build the template.'),
+      h('div', { class: 'ce-bar' }, h('div', { class: 'ce-bar-row' },
+        btn([svgEl(CH_ICON.grid, 'ico'), 'Add item'], add, 'small'),
+        btn([svgEl(CH_ICON.book, 'ico'), t.shared ? 'Shared to the library' : 'Share to template library'], () => { t.shared = !t.shared; toast(t.shared ? 'Once saved, it shows in the template library in this browser.' : 'Taken out of the template library.'); redraw(); }, t.shared ? 'small on' : 'small'),
+        t.isNew ? null : btn(svgEl(ACT.remove[1], 'ico'), del, 'small icon', { 'aria-label': 'Delete the template', title: 'Delete the template', class: 'btn btn-small btn-icon danger-text' }),
+        h('span', { class: 'spacer' }), btn('Cancel', () => finish(false), 'small'), btn('Save', () => finish(true), 'primary small')))));
+    return pg;
+  }
   /* ---------- the patient's view: the intake chat from the prototype ---------- */
   let A = {}, T = {}, started = null, curIndex = null, busy = false, chatPid = null;
   const log = $('log'), comp = $('composer');
@@ -5135,6 +5984,7 @@ Psychiatrist`;
   $('acctMenu').addEventListener('click', ev => { const b = ev.target.closest('button'); if (!b) return; closeMenus(); if (b.dataset.role && b.dataset.role !== role) setRole(b.dataset.role); });
   $('resetDemo').addEventListener('click', askResetDemo);
   $('claudeBtn').addEventListener('click', claudeMenu);
+  $('tplBtn').addEventListener('click', () => go('templates', { tplDraft: null }));
   $('signOut').addEventListener('click', signOut);
   // Changes waiting to be saved (a recording's last lines, say) are saved as the tab closes.
   window.addEventListener('pagehide', () => { if (S) persist(); });
@@ -5204,6 +6054,9 @@ Psychiatrist`;
       persist();
     }
     S.visits.forEach(v => { if (v.status === 'recording') v.status = v.transcript && v.transcript.length ? 'recorded' : 'scheduled'; });
+    // Clinics saved before chart entries and templates came in get them now.
+    if (!S.entries) S.entries = [];
+    if (!S.templates) S.templates = starterTemplates();
     S.faxes.forEach(finishFax);
     syncAcct();
     syncClaudeBtn();
