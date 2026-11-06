@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="robots" content="noindex, nofollow">
+<meta name="deepgram-keys" content="https://psych-prototype-soniox-keys.andrew-b0f.workers.dev/deepgram-key">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Psychiatry Practice Prototype</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -2848,8 +2849,10 @@ Psychiatrist`;
   function promptWho(v, l) { const sc = DEMO_TRANSCRIPTS[v.demo] || {}; return l.who === 'dr' ? 'Psychiatrist' : l.who === 'int' ? (sc.interpreter || 'Interpreter') : l.who === 'un' ? (l.voice ? `Voice ${l.voice}` : 'Speaker') : 'Patient'; }
   const unlabelled = v => (v.transcript || []).some(l => l.who === 'un');
   const UNLABELLED_RULE = "The transcript doesn't always say who spoke: lines marked Speaker, or Voice and a number, came from one microphone. Tell the psychiatrist and the patient apart only from what is said, and leave out anything when it isn't clear who said it.";
+  // The transcript as the prompts give it, numbered from 1; a line said in another language carries its English.
+  const promptLines = v => (v.transcript || []).map((l, i) => `${i + 1}. [${mmss(l.s)}] ${promptWho(v, l)}: ${l.text}${l.en ? ` (in English: ${l.en})` : ''}`).join('\n');
   function notePrompt(p, v, change) {
-    const n = (v.transcript || []).length, lines = (v.transcript || []).map((l, i) => `${i + 1}. [${mmss(l.s)}] ${promptWho(v, l)}: ${l.text}`).join('\n');
+    const n = (v.transcript || []).length, lines = promptLines(v);
     const cur = change ? noteLines(v) : [];
     const visit = `It was a ${TYPES[v.type].label.toLowerCase()} with ${p.name} (${pron(p) || 'pronouns not given'}), by ${modeWord(v.mode)}, spoken in ${LANGS[v.lang] || 'English'}${v.lang !== 'en' ? ' and English' : ''}.`;
     return [
@@ -2950,7 +2953,7 @@ Psychiatrist`;
 
   /* ---------- the visit summary: paragraphs like a clinic letter, each sentence tied to the transcript lines it came from ---------- */
   function summaryPrompt(p, v) {
-    const lines = (v.transcript || []).map((l, i) => `${i + 1}. [${mmss(l.s)}] ${promptWho(v, l)}: ${l.text}`).join('\n');
+    const lines = promptLines(v);
     return [
       `Summarize this ${TYPES[v.type].label.toLowerCase()} for the psychiatrist in two to four short paragraphs of plain prose, the way a clinic letter reads, in the order things came up. It was with ${p.name} (${pron(p) || 'pronouns not given'}), spoken in ${LANGS[v.lang] || 'English'}. Write in English, translating anything said in another language.`,
       'Cover how the patient is doing, symptoms, medication and side effects, alcohol and drugs, safety (thoughts of suicide or self-harm) and the plan. Leave out greetings and consent to recording.',
@@ -2968,32 +2971,62 @@ Psychiatrist`;
 
   /* ---------- transcribers: what turns the microphone's speech into text ---------- */
   // Recording talks only to a transcriber, so a speech-to-text service can take over from the browser's speech
-  // recognition later without changing the screens. A transcriber has:
-  //   label        what the hint under the record button calls it
+  // recognition without changing the screens. A transcriber has:
+  //   hint(lang, code)  the first sentence of the hint under the record button, given the visit's language by name
+  //                and by code
   //   heardBy      who receives the audio, for the privacy line in that hint
   //   available()  whether it can run in this browser
   //   needsStream  true if it wants the microphone's MediaStream (a service sends the audio from it)
   //   open(o)      starts listening and returns { pause(), resume(), stop(), abort() }. o carries
   //                  lang                the visit's language as a BCP 47 tag (SPEECH_LANG)
+  //                  code                the visit's language code ('en', 'zh', 'yue' or 'pa')
   //                  stream              the microphone's MediaStream, when needsStream
   //                  partial(text)       the words of the current line so far, which may still change ('' when none)
-  //                  line(text, who, voice)  a finished line. who is 'dr', 'pt', 'int', or 'un' when it can't tell
-  //                                      who spoke; a service that numbers voices passes 'un' and the voice number
-  //                  failed(code)        it can't go on: 'blocked', 'no-microphone', 'network', 'language' or 'stopped'
+  //                  line(text, who, voice, more)  a finished line, returned so it can be added to later. who is
+  //                                      'dr', 'pt', 'int', or 'un' when it can't tell who spoke; a service that
+  //                                      numbers voices passes 'un' and the voice number. more may carry lang (the
+  //                                      language it was said in) and en (its English, when it wasn't in English)
+  //                  update(line, more)  adds to a line already given, such as its English arriving afterwards
+  //                  failed(code)        it can't go on: 'blocked', 'no-microphone', 'network', 'language',
+  //                                      'stopped', 'busy', 'service', 'service-key' or 'service-credit'
   //                  ended()             after stop(), once the last words are in
-  // Only the browser's own speech recognition is built. A service goes in TRANSCRIBERS.service; see the README.
+  // A speech-to-text service on one clinic account takes over from the browser's speech recognition when the page is
+  // built with the address of the key server that hands out its short-lived keys (soniox-keys/ and the README):
+  // Deepgram, which the pages use, or Soniox.
   const SPEECH_LANG = { en: 'en-CA', zh: 'zh-CN', yue: 'zh-HK', pa: 'pa-IN' };
+  const DEEPGRAM_KEYS = (document.querySelector('meta[name="deepgram-keys"]') || {}).content || '';
+  const SONIOX_KEYS = (document.querySelector('meta[name="soniox-keys"]') || {}).content || '';
   const TRANSCRIBERS = {
     browser: {
-      label: 'this browser’s speech recognition',
+      hint: lang => `Recording turns what’s said in ${lang} into text with this browser’s speech recognition.`,
       heardBy: 'The browser’s maker hears the audio (Google for Chrome, Microsoft for Edge, Apple for Safari)',
       available: () => !!(window.SpeechRecognition || window.webkitSpeechRecognition),
       needsStream: false,
       open: browserTranscriber,
     },
-    service: null,
+    deepgram: DEEPGRAM_KEYS ? {
+      hint: (lang, code) => (code === 'en' ? 'Recording turns what’s said into text with Deepgram, which tells the voices apart.'
+        : (DEEPGRAM_LANG[code] || [])[0] === 'multi' ? `Recording turns what’s said in English and ${lang} into text with Deepgram, which tells the voices apart.`
+        : `Recording turns what’s said in ${lang} into text with Deepgram, which tells the voices apart. It hears only ${lang}, so anything said in English may come out wrong.`),
+      heardBy: 'Deepgram hears the audio',
+      available: () => typeof MediaRecorder === 'function' && typeof WebSocket === 'function',
+      needsStream: true,
+      // Its last words come back a moment after Stop.
+      stopWait: 6000,
+      open: deepgramTranscriber,
+    } : null,
+    soniox: SONIOX_KEYS ? {
+      hint: lang => (lang === 'English' ? 'Recording turns what’s said into text with Soniox, which tells the voices apart.'
+        : `Recording turns what’s said in English and ${lang} into text with Soniox, which tells the voices apart and puts English under anything said in ${lang}.`),
+      heardBy: 'Soniox hears the audio',
+      available: () => typeof MediaRecorder === 'function' && typeof WebSocket === 'function',
+      needsStream: true,
+      // Its last words and their English can take a few seconds to come back after Stop.
+      stopWait: 10000,
+      open: sonioxTranscriber,
+    } : null,
   };
-  const transcriber = TRANSCRIBERS.service && TRANSCRIBERS.service.available() ? TRANSCRIBERS.service : TRANSCRIBERS.browser;
+  const transcriber = [TRANSCRIBERS.deepgram, TRANSCRIBERS.soniox].find(t => t && t.available()) || TRANSCRIBERS.browser;
   // The microphone is used outside claude.ai (where pages can't reach it) when the transcriber can run here.
   const micReady = canConnect && transcriber.available() && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
   // Speech recognition hears the words but not who said them, so its lines are 'un'. Browsers end recognition after a
@@ -3029,6 +3062,186 @@ Psychiatrist`;
       resume() { paused = false; listen(); },
       stop() { if (over) return; stopping = true; if (running) r.stop(); else { over = true; o.ended(); } },
       abort() { over = true; try { r.abort(); } catch (e) { /* already ended */ } },
+    };
+  }
+  // Soniox gets the microphone's own recording (MediaRecorder's WebM, which it recognizes by itself) and sends back the
+  // words as they settle, each with its speaker's number and language, and English for anything said in another
+  // language. Words become a line when the speaker changes or Soniox hears the end of what someone said. The key
+  // server hands out a key that opens one stream; the clinic's own Soniox key never reaches the page.
+  const SONIOX_WS = 'wss://stt-rt.soniox.com/transcribe-websocket';
+  async function sonioxKey() {
+    const fail = code => Object.assign(new Error(code), { code });
+    let res;
+    try { res = await fetch(SONIOX_KEYS, { method: 'POST' }); } catch (e) { throw fail('network'); }
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 429) throw fail('busy');
+    if (!res.ok || !data.api_key) throw fail('service');
+    return data.api_key;
+  }
+  function sonioxTranscriber(o) {
+    let ws = null, rec = null, over = false, paused = false, stopping = false, beat = 0;
+    let cur = null, last = null; // the line being spoken; the newest line not in English, whose English may still come
+    const hints = [...new Set(['en', o.lang.split('-')[0]])];
+    const done = code => {
+      if (over) return;
+      over = true; clearInterval(beat);
+      try { if (rec && rec.state !== 'inactive') rec.stop(); } catch (e) { /* already stopped */ }
+      try { if (ws) ws.close(); } catch (e) { /* already closed */ }
+      if (code) o.failed(code); else o.ended();
+    };
+    const close = () => {
+      if (cur && cur.text.trim()) {
+        const l = o.line(cur.text.trim(), 'un', cur.voice, { lang: cur.lang || undefined, en: cur.en.trim() || undefined });
+        last = cur.lang && cur.lang !== 'en' ? { l, en: cur.en } : null;
+      }
+      cur = null;
+    };
+    const take = tokens => {
+      let partial = '';
+      for (const t of tokens) {
+        if (/^<\w+>$/.test(t.text)) { if (t.is_final && t.text === '<end>') close(); continue; }
+        if (t.translation_status === 'translation') {
+          if (!t.is_final) continue;
+          if (cur && cur.lang && cur.lang !== 'en') cur.en += t.text;
+          else if (last) { last.en += t.text; o.update(last.l, { en: last.en.trim() }); }
+          continue;
+        }
+        if (!t.is_final) { partial += t.text; continue; }
+        const voice = Number(t.speaker) || undefined;
+        if (cur && voice && cur.voice && voice !== cur.voice) close();
+        if (!cur) cur = { text: '', voice, lang: t.language || '', en: '' };
+        cur.text += t.text;
+        if (!cur.lang && t.language) cur.lang = t.language;
+      }
+      o.partial(((cur ? cur.text : '') + partial).trim());
+    };
+    (async () => {
+      let key;
+      try { key = await sonioxKey(); } catch (e) { done(e.code || 'service'); return; }
+      if (over) return;
+      ws = new WebSocket(SONIOX_WS, ['soniox-api-key', key]);
+      ws.onopen = () => {
+        ws.send(JSON.stringify({ model: 'stt-rt-v6', audio_format: 'auto', language_hints: hints, enable_speaker_diarization: true, enable_language_identification: true, enable_endpoint_detection: true, translation: { type: 'one_way', target_language: 'en' } }));
+        const type = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'].find(t => MediaRecorder.isTypeSupported(t));
+        rec = new MediaRecorder(o.stream, type ? { mimeType: type } : undefined);
+        rec.ondataavailable = e => { if (e.data.size && ws.readyState === WebSocket.OPEN) ws.send(e.data); };
+        // The last of the audio comes out as the recorder stops; an empty message then tells Soniox that was all.
+        rec.onstop = () => { if (stopping && ws.readyState === WebSocket.OPEN) ws.send(''); };
+        rec.start(250);
+        if (paused) rec.pause();
+        // No audio goes while paused, so a keepalive holds the connection open (Soniox closes it after 40 quiet seconds).
+        beat = setInterval(() => { if (paused && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'keepalive' })); }, 15000);
+      };
+      ws.onmessage = ev => {
+        let m;
+        try { m = JSON.parse(ev.data); } catch (e) { return; }
+        if (m.error_code) { done(m.error_code === 401 || m.error_code === 403 ? 'service-key' : m.error_code === 402 ? 'service-credit' : m.error_code === 429 ? 'busy' : 'service'); return; }
+        if (m.tokens && m.tokens.length) take(m.tokens);
+        if (m.finished) { close(); done(); }
+      };
+      ws.onclose = () => { if (over) return; if (stopping) { close(); done(); } else done('network'); };
+    })();
+    return {
+      pause() { paused = true; try { if (rec && rec.state === 'recording') rec.pause(); } catch (e) { /* not recording yet */ } },
+      resume() { paused = false; try { if (rec && rec.state === 'paused') rec.resume(); } catch (e) { /* not recording yet */ } },
+      stop() {
+        if (over) return;
+        stopping = true;
+        if (rec && rec.state !== 'inactive') rec.stop();
+        else if (ws && ws.readyState === WebSocket.OPEN) ws.send('');
+        else done();
+      },
+      abort() { over = true; clearInterval(beat); try { if (rec && rec.state !== 'inactive') rec.stop(); } catch (e) { /* stopped */ } try { if (ws) ws.close(); } catch (e) { /* closed */ } },
+    };
+  }
+  // Deepgram (Nova-3) also gets the microphone's own WebM recording, and sends back words with the number of the
+  // speaker who said them (from 0), as rough guesses first and then final. A line ends where the speaker changes or
+  // Deepgram hears the end of what someone said. Mandarin and Cantonese can mix with English (its multilingual mode,
+  // hinted to the two languages); Punjabi isn't in that mode, so it's heard alone. Deepgram doesn't translate: the AI
+  // puts everything into English when it writes the note.
+  const DEEPGRAM_WS = 'wss://api.deepgram.com/v1/listen';
+  const DEEPGRAM_LANG = { en: ['en'], zh: ['multi', 'en', 'zh'], yue: ['multi', 'en', 'zh-HK'], pa: ['pa'] };
+  async function deepgramToken() {
+    const fail = code => Object.assign(new Error(code), { code });
+    let res;
+    try { res = await fetch(DEEPGRAM_KEYS, { method: 'POST' }); } catch (e) { throw fail('network'); }
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 429) throw fail('busy');
+    if (!res.ok || !data.access_token) throw fail('service');
+    return data.access_token;
+  }
+  const CJK = /[　-鿿＀-￯]/;
+  function deepgramTranscriber(o) {
+    let ws = null, over = false, paused = false, stopping = false, opened = false, beat = 0;
+    let cur = null; // the line being spoken
+    const [language, ...hints] = DEEPGRAM_LANG[o.code] || DEEPGRAM_LANG.en;
+    const open = () => !!ws && ws.readyState === WebSocket.OPEN;
+    const closeStream = () => ws.send(JSON.stringify({ type: 'CloseStream' }));
+    // Recording starts at once, and what's said while the stream opens (a second or so) is kept and sent first, so the
+    // first words aren't lost.
+    const type = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'].find(t => MediaRecorder.isTypeSupported(t));
+    const rec = new MediaRecorder(o.stream, type ? { mimeType: type } : undefined), early = [];
+    rec.ondataavailable = e => { if (!e.data.size) return; if (open()) ws.send(e.data); else if (!opened) early.push(e.data); };
+    // The last of the audio comes out as the recorder stops; CloseStream then asks Deepgram for its last words.
+    rec.onstop = () => { if (stopping && open()) closeStream(); };
+    rec.start(250);
+    const done = code => {
+      if (over) return;
+      over = true; clearInterval(beat);
+      try { if (rec.state !== 'inactive') rec.stop(); } catch (e) { /* already stopped */ }
+      try { if (ws) ws.close(); } catch (e) { /* already closed */ }
+      if (code) o.failed(code); else o.ended();
+    };
+    const close = () => { if (cur && cur.text) o.line(cur.text, 'un', cur.voice, { lang: cur.lang || undefined }); cur = null; };
+    // Chinese has no spaces between words.
+    const join = (a, b) => (!a ? b : CJK.test(a.slice(-1)) && CJK.test(b[0]) ? a + b : `${a} ${b}`);
+    const take = m => {
+      const alt = (m.channel && m.channel.alternatives && m.channel.alternatives[0]) || {};
+      if (!m.is_final) { o.partial(join(cur ? cur.text : '', alt.transcript || '')); return; }
+      for (const w of alt.words || []) {
+        const voice = w.speaker != null ? w.speaker + 1 : undefined, text = w.punctuated_word || w.word;
+        if (cur && voice && cur.voice && voice !== cur.voice) close();
+        if (!cur) cur = { text: '', voice, lang: w.language || (language === 'multi' ? '' : language.split('-')[0]) };
+        cur.text = join(cur.text, text);
+      }
+      if (m.speech_final) close();
+      o.partial(cur ? cur.text : '');
+    };
+    (async () => {
+      let token;
+      try { token = await deepgramToken(); } catch (e) { done(e.code || 'service'); return; }
+      if (over) return;
+      const q = new URLSearchParams({ model: 'nova-3', language, diarize_model: 'latest', interim_results: 'true', punctuate: 'true', smart_format: 'true', endpointing: '300', utterance_end_ms: '1000' });
+      hints.forEach(l => q.append('language_hint', l));
+      ws = new WebSocket(`${DEEPGRAM_WS}?${q}`, ['bearer', token]);
+      ws.onopen = () => {
+        opened = true;
+        early.splice(0).forEach(b => ws.send(b));
+        // Stopped while the stream was opening: all of it has now gone, so ask for the last words.
+        if (stopping && rec.state === 'inactive') closeStream();
+        // No audio goes while paused, and Deepgram closes a stream that's quiet for ten seconds, so a keepalive holds it.
+        beat = setInterval(() => { if (paused && open()) ws.send(JSON.stringify({ type: 'KeepAlive' })); }, 5000);
+      };
+      ws.onmessage = ev => {
+        let m;
+        try { m = JSON.parse(ev.data); } catch (e) { return; }
+        if (m.type === 'Results') take(m);
+        else if (m.type === 'UtteranceEnd') { close(); o.partial(''); }
+      };
+      // A refused token or account shows only as a connection that never opens; a fatal error closes it.
+      ws.onclose = () => { if (over) return; if (stopping && opened) { close(); done(); } else done(opened ? 'network' : 'service'); };
+    })();
+    return {
+      pause() { paused = true; try { if (rec.state === 'recording') rec.pause(); } catch (e) { /* stopped */ } },
+      resume() { paused = false; try { if (rec.state === 'paused') rec.resume(); } catch (e) { /* stopped */ } },
+      // A stream still opening gets CloseStream once it opens.
+      stop() {
+        if (over || stopping) return;
+        stopping = true;
+        if (rec.state !== 'inactive') rec.stop();
+        else if (open()) closeStream();
+      },
+      abort() { over = true; clearInterval(beat); try { if (rec.state !== 'inactive') rec.stop(); } catch (e) { /* stopped */ } try { if (ws) ws.close(); } catch (e) { /* closed */ } },
     };
   }
 
@@ -3836,7 +4049,7 @@ Psychiatrist`;
         signed ? null : recControls(v, recording, mine && !!rec.paused, hasT)),
       needsCall(p) ? h('p', { class: 'flag-line' }, 'This patient still needs a safety follow-up.') : null,
       signed ? null : h('p', { class: 'hint rec-hint' }, micReady
-        ? `Recording turns what’s said in ${LANGS[v.lang] || 'English'} into text with ${transcriber.label}. ${transcriber.heardBy}, so use made-up voices only. The note is always written in English, and the recording is deleted when you sign.`
+        ? `${transcriber.hint(LANGS[v.lang] || 'English', v.lang || 'en')} ${transcriber.heardBy}, so use made-up voices only. The note is always written in English, and the recording is deleted when you sign.`
         : `Demo: recording plays a made-up ${sc.lang === 'en' ? 'English' : LANGS[sc.lang]} session${sc.interpreter ? ' with an interpreter' : ''}. The note is always written in English, and the recording is deleted when you sign.` + (canConnect ? ' To record from the microphone, open this page in Chrome, Edge or Safari.' : '')),
       h('div', { class: 'tabs', role: 'tablist', 'aria-label': 'Visit' }, [['context', 'Context'], ['note', 'Note'], ['transcript', 'Transcript']].map(([k, l]) => h('button', { class: 'tab', role: 'tab', type: 'button', 'aria-selected': String(tab === k), onclick: () => { ui.sessionTab = k; renderKeepScroll = true; render(); } }, l,
         k === 'transcript' && recording && !rec.paused ? h('span', { class: 'live-dot', title: 'Recording' }) : null, k === 'transcript' && hasT ? h('span', { class: 'count' }, String(v.transcript.length)) : null))),
@@ -3985,7 +4198,8 @@ Psychiatrist`;
   }
   // Lines from the microphone have no speaker ('un'), unless a speech-to-text service numbered the voices.
   function speaker(v, l) { const sc = DEMO_TRANSCRIPTS[v.demo] || {}; return l.who === 'un' ? (l.voice ? `Voice ${l.voice}` : '') : l.who === 'dr' ? CLINIC.doctor : l.who === 'int' ? (sc.interpreter || 'Interpreter') : firstName(P(v.pid)); }
-  function lineEl(v, l, i) { const sc = DEMO_TRANSCRIPTS[v.demo] || {}, name = speaker(v, l); return h('li', { 'data-i': i, tabindex: '0', role: 'button', 'aria-pressed': 'false' }, h('span', { class: 'ts' }, mmss(l.s)), h('div', null, name ? h('span', { class: 'who ' + l.who }, name) : null, l.en ? h('span', { lang: { zh: 'zh-Hans', pa: 'pa', yue: 'zh-Hant' }[sc.lang] || null }, l.text) : l.text, l.en ? h('span', { class: 'en' }, l.en) : null)); }
+  // A line said in another language shows its English under it: the made-up sessions' translations, or Soniox's.
+  function lineEl(v, l, i) { const sc = DEMO_TRANSCRIPTS[v.demo] || {}, name = speaker(v, l); return h('li', { 'data-i': i, tabindex: '0', role: 'button', 'aria-pressed': 'false' }, h('span', { class: 'ts' }, mmss(l.s)), h('div', null, name ? h('span', { class: 'who ' + l.who }, name) : null, l.en ? h('span', { lang: l.lang || { zh: 'zh-Hans', pa: 'pa', yue: 'zh-Hant' }[sc.lang] || null }, l.text) : l.text, l.en ? h('span', { class: 'en' }, l.en) : null)); }
   // With `demo`, or where there's no microphone to use, recording plays the visit's made-up session line by line.
   function startRec(v, demo) {
     if (!v.consent) { openConsent(v, demo); return; }
@@ -4039,6 +4253,10 @@ Psychiatrist`;
     'no-microphone': 'No microphone was found. Check that one is connected, then start again.',
     network: 'Speech recognition couldn’t reach its service. Check the connection, then start again.',
     stopped: 'Speech recognition kept stopping. Start again, or try another browser.',
+    busy: 'The speech service is busy. Try again in a minute.',
+    service: 'The speech service couldn’t start the recording. Try again in a little while.',
+    'service-key': 'The speech service turned the clinic’s key down. The key server needs a working Soniox key.',
+    'service-credit': 'The clinic’s Soniox account is out of credit. Add funds in the Soniox Console, then start again.',
   };
   function startMic(v) {
     stopTimer();
@@ -4047,10 +4265,11 @@ Psychiatrist`;
     const m = { t: null, stream: null, audio: null, frame: 0, start: Date.now(), pausedFor: 0, pausedAt: 0, partial: '', lineAt: null, stopping: false, done: false, before };
     rec = { vid: v.id, idx: 0, timer: setInterval(() => micClock(v), 500), paused: false, mic: m };
     const o = {
-      lang: SPEECH_LANG[v.lang] || 'en-CA',
+      lang: SPEECH_LANG[v.lang] || 'en-CA', code: v.lang || 'en',
       // A line's time is when its first words were heard.
       partial: text => { if (text && m.lineAt == null) m.lineAt = micElapsed(m); m.partial = text; showPartial(v); },
-      line: (text, who, voice) => addMicLine(v, m, text, who, voice),
+      line: (text, who, voice, more) => addMicLine(v, m, text, who, voice, more),
+      update: (l, more) => updateMicLine(v, m, l, more),
       failed: code => micFailed(v, m, code),
       ended: () => finishMic(v, m),
     };
@@ -4074,14 +4293,25 @@ Psychiatrist`;
   }
   function micElapsed(m) { return Math.max(0, Math.floor((Date.now() - m.start - m.pausedFor - (m.pausedAt ? Date.now() - m.pausedAt : 0)) / 1000)); }
   function micClock(v) { const tm = $('timer-' + v.id); if (tm && rec.mic) tm.textContent = mmss(micElapsed(rec.mic)); }
-  function addMicLine(v, m, text, who, voice) {
-    if (m.done) return;
-    const l = { s: m.lineAt != null ? m.lineAt : micElapsed(m), who: who || 'un', text: text.charAt(0).toUpperCase() + text.slice(1) };
-    if (voice) l.voice = voice;
+  function addMicLine(v, m, text, who, voice, more) {
+    if (m.done) return null;
+    const l = Object.assign({ s: m.lineAt != null ? m.lineAt : micElapsed(m), who: who || 'un', text: text.charAt(0).toUpperCase() + text.slice(1) }, voice ? { voice } : null);
+    if (more && more.lang) l.lang = more.lang;
+    if (more && more.en) l.en = more.en;
     m.lineAt = null; m.partial = '';
     v.transcript.push(l);
     const list = $('tr-' + v.id);
     if (list) { list.insertBefore(lineEl(v, l, v.transcript.length - 1), list.querySelector('.partial')); showPartial(v); }
+    persistSoon();
+    return l;
+  }
+  // A line's English can arrive after the line: it is added, and the line redrawn in place.
+  function updateMicLine(v, m, l, more) {
+    const i = v.transcript.indexOf(l);
+    if (!l || i < 0) return;
+    Object.assign(l, more);
+    const list = $('tr-' + v.id), old = list && list.querySelector(`[data-i="${i}"]`);
+    if (old) old.replaceWith(lineEl(v, l, i));
     persistSoon();
   }
   // The words of the line being spoken, under the finished lines, until the transcriber settles them.
@@ -4113,7 +4343,7 @@ Psychiatrist`;
     const m = rec.mic; if (!m || m.stopping) return;
     m.stopping = true; clearInterval(rec.timer); rec.timer = null;
     if (m.t) m.t.stop(); else finishMic(v, m);
-    setTimeout(() => finishMic(v, m), 2500);
+    setTimeout(() => finishMic(v, m), transcriber.stopWait || 2500);
   }
   function finishMic(v, m, failed) {
     if (m.done || rec.mic !== m) return;
