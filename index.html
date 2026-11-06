@@ -264,6 +264,7 @@ a{color:var(--accent-text);text-decoration:none}
 .bars.on i:nth-child(3){animation-delay:.24s}
 .bars.on i:nth-child(4){animation-delay:.36s}
 .bars.on i:nth-child(5){animation-delay:.48s}
+.bars.live i{background:var(--green);transition:height 80ms linear}
 @keyframes lvl{0%,100%{height:4px}50%{height:15px}}
 @media (prefers-reduced-motion: reduce){.bars.on i{animation:none;height:10px}}
 .split{display:inline-flex}
@@ -615,6 +616,8 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
 .transcript li{border-radius:8px;cursor:pointer}
 .transcript li:hover{background:var(--fill-3)}
 .transcript li.on{background:var(--accent-soft)}
+.transcript li.partial{color:var(--muted);cursor:default}
+.transcript li.partial:hover{background:none}
 .transcript li:focus-visible,.sum-s:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}
 .sum-body{position:relative;display:grid;gap:10px;max-height:440px;overflow-y:auto;padding-right:2px;font-size:13px;line-height:1.6}
 .sum-body p{margin:0}
@@ -2811,10 +2814,13 @@ Psychiatrist`;
   }
   // With `change`, the prompt asks the AI to change the note as the psychiatrist asked (the Ask box). The current note
   // is numbered after the transcript, so a sentence may keep what the note already says by pointing at its line.
+  // How the prompts name a line's speaker. Lines from one microphone don't say who spoke (who 'un'), unless a
+  // speech-to-text service numbered the voices; the AI is then told to tell people apart only where it's clear.
+  function promptWho(v, l) { const sc = DEMO_TRANSCRIPTS[v.demo] || {}; return l.who === 'dr' ? 'Psychiatrist' : l.who === 'int' ? (sc.interpreter || 'Interpreter') : l.who === 'un' ? (l.voice ? `Voice ${l.voice}` : 'Speaker') : 'Patient'; }
+  const unlabelled = v => (v.transcript || []).some(l => l.who === 'un');
+  const UNLABELLED_RULE = "The transcript doesn't always say who spoke: lines marked Speaker, or Voice and a number, came from one microphone. Tell the psychiatrist and the patient apart only from what is said, and leave out anything when it isn't clear who said it.";
   function notePrompt(p, v, change) {
-    const script = DEMO_TRANSCRIPTS[v.demo] || {};
-    const who = w => (w === 'dr' ? 'Psychiatrist' : w === 'int' ? (script.interpreter || 'Interpreter') : 'Patient');
-    const n = (v.transcript || []).length, lines = (v.transcript || []).map((l, i) => `${i + 1}. [${mmss(l.s)}] ${who(l.who)}: ${l.text}`).join('\n');
+    const n = (v.transcript || []).length, lines = (v.transcript || []).map((l, i) => `${i + 1}. [${mmss(l.s)}] ${promptWho(v, l)}: ${l.text}`).join('\n');
     const cur = change ? noteLines(v) : [];
     const visit = `It was a ${TYPES[v.type].label.toLowerCase()} with ${p.name} (${pron(p) || 'pronouns not given'}), by ${modeWord(v.mode)}, spoken in ${LANGS[v.lang] || 'English'}${v.lang !== 'en' ? ' and English' : ''}.`;
     return [
@@ -2823,6 +2829,7 @@ Psychiatrist`;
       `Write only what was explicitly said in the transcript${change ? ' or is already in the current note' : ''}. Never add, assume or infer anything: no findings, diagnoses, doses, frequencies, durations, referrals, instructions or reasons that nobody said. Do not judge appearance, speech, affect, thought process, insight or judgment from how the conversation went; include them only if the psychiatrist said them. Anything not mentioned stays blank. A blank is always better than a guess.${change ? ' If the request needs something that was not said, leave that part out.' : ''}`,
       change ? `End every sentence with the numbers of the lines it comes from, in square brackets: transcript lines 1 to ${n}, or lines ${n + 1} to ${n + cur.length} of the current note, like: Speech: Slow and quiet. [20]  A sentence you cannot tie to a line will be removed.`
         : 'End every sentence with the numbers of the transcript lines it comes from, in square brackets, like: Speech: Slow and quiet. [20]  A sentence you cannot tie to a line will be removed.',
+      ...(unlabelled(v) ? [UNLABELLED_RULE] : []),
       'Use exactly these headings, each on its own line followed by a colon: Mental Status Examination, Impression, Plan, Patient summary, Not interpreted in the room.',
       'Mental Status Examination: seven lines, each starting with its label and a colon, in this order: Appearance and behaviour, Speech, Mood and affect, Thought process, Thought content, Perception, Insight and judgment. Thought content includes suicidal ideation, as asked and answered. Leave a line empty after its label when the visit did not cover it.',
       "Impression: the psychiatrist's stated impression, in their words. Leave it empty if none was stated.",
@@ -2914,13 +2921,12 @@ Psychiatrist`;
 
   /* ---------- the visit summary: paragraphs like a clinic letter, each sentence tied to the transcript lines it came from ---------- */
   function summaryPrompt(p, v) {
-    const script = DEMO_TRANSCRIPTS[v.demo] || {};
-    const who = w => (w === 'dr' ? 'Psychiatrist' : w === 'int' ? (script.interpreter || 'Interpreter') : 'Patient');
-    const lines = (v.transcript || []).map((l, i) => `${i + 1}. [${mmss(l.s)}] ${who(l.who)}: ${l.text}`).join('\n');
+    const lines = (v.transcript || []).map((l, i) => `${i + 1}. [${mmss(l.s)}] ${promptWho(v, l)}: ${l.text}`).join('\n');
     return [
       `Summarize this ${TYPES[v.type].label.toLowerCase()} for the psychiatrist in two to four short paragraphs of plain prose, the way a clinic letter reads, in the order things came up. It was with ${p.name} (${pron(p) || 'pronouns not given'}), spoken in ${LANGS[v.lang] || 'English'}. Write in English, translating anything said in another language.`,
       'Cover how the patient is doing, symptoms, medication and side effects, alcohol and drugs, safety (thoughts of suicide or self-harm) and the plan. Leave out greetings and consent to recording.',
       'Use only what was said. Where an interpreter left something out or changed it, say so in that sentence.',
+      ...(unlabelled(v) ? [UNLABELLED_RULE] : []),
       'After every sentence, put the numbers of the transcript lines it comes from in square brackets, like: She now sleeps five or six hours a night. [4, 5]',
       'Separate paragraphs with a blank line. No headings, lists or Markdown.',
       '', 'Transcript:', lines,
@@ -2929,6 +2935,72 @@ Psychiatrist`;
   // Reads the AI's paragraphs back into sentences, each with the transcript lines it named; like the note, a sentence that names no line is left out.
   function parseSummary(text, n) {
     return String(text || '').split(/\r?\n+/).map(par => par.trim()).filter(Boolean).map(par => citedPieces(par, n).kept).filter(par => par.length);
+  }
+
+  /* ---------- transcribers: what turns the microphone's speech into text ---------- */
+  // Recording talks only to a transcriber, so a speech-to-text service can take over from the browser's speech
+  // recognition later without changing the screens. A transcriber has:
+  //   label        what the hint under the record button calls it
+  //   heardBy      who receives the audio, for the privacy line in that hint
+  //   available()  whether it can run in this browser
+  //   needsStream  true if it wants the microphone's MediaStream (a service sends the audio from it)
+  //   open(o)      starts listening and returns { pause(), resume(), stop(), abort() }. o carries
+  //                  lang                the visit's language as a BCP 47 tag (SPEECH_LANG)
+  //                  stream              the microphone's MediaStream, when needsStream
+  //                  partial(text)       the words of the current line so far, which may still change ('' when none)
+  //                  line(text, who, voice)  a finished line. who is 'dr', 'pt', 'int', or 'un' when it can't tell
+  //                                      who spoke; a service that numbers voices passes 'un' and the voice number
+  //                  failed(code)        it can't go on: 'blocked', 'no-microphone', 'network', 'language' or 'stopped'
+  //                  ended()             after stop(), once the last words are in
+  // Only the browser's own speech recognition is built. A service goes in TRANSCRIBERS.service; see the README.
+  const SPEECH_LANG = { en: 'en-CA', zh: 'zh-CN', yue: 'zh-HK', pa: 'pa-IN' };
+  const TRANSCRIBERS = {
+    browser: {
+      label: 'this browser’s speech recognition',
+      heardBy: 'The browser’s maker hears the audio (Google for Chrome, Microsoft for Edge, Apple for Safari)',
+      available: () => !!(window.SpeechRecognition || window.webkitSpeechRecognition),
+      needsStream: false,
+      open: browserTranscriber,
+    },
+    service: null,
+  };
+  const transcriber = TRANSCRIBERS.service && TRANSCRIBERS.service.available() ? TRANSCRIBERS.service : TRANSCRIBERS.browser;
+  // The microphone is used outside claude.ai (where pages can't reach it) when the transcriber can run here.
+  const micReady = canConnect && transcriber.available() && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  // Speech recognition hears the words but not who said them, so its lines are 'un'. Browsers end recognition after a
+  // pause in speech or a minute or so, so it starts again while the recording runs.
+  function browserTranscriber(o) {
+    const r = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    let running = false, paused = false, stopping = false, over = false, fatal = null, startedAt = 0, quick = 0;
+    r.lang = o.lang; r.continuous = true; r.interimResults = true;
+    const listen = () => { if (running || over) return; try { r.start(); running = true; startedAt = Date.now(); } catch (e) { /* still ending; onend starts it again */ } };
+    r.onresult = e => {
+      let partial = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const res = e.results[i], text = res[0].transcript.trim();
+        if (res.isFinal) { if (text) o.line(text, 'un'); } else partial += res[0].transcript;
+      }
+      o.partial(partial.trim());
+    };
+    // Silence and the page's own stops aren't failures; anything else ends the recording.
+    r.onerror = e => { if (e.error !== 'no-speech' && e.error !== 'aborted') fatal = { 'not-allowed': 'blocked', 'service-not-allowed': 'blocked', 'audio-capture': 'no-microphone', network: 'network', 'language-not-supported': 'language' }[e.error] || 'stopped'; };
+    r.onend = () => {
+      running = false;
+      if (over) return;
+      if (stopping) { over = true; o.ended(); return; }
+      if (fatal) { over = true; o.failed(fatal); return; }
+      if (paused) return;
+      quick = Date.now() - startedAt < 1500 ? quick + 1 : 0;
+      if (quick >= 5) { over = true; o.failed('stopped'); return; }
+      listen();
+    };
+    listen();
+    return {
+      pause() { paused = true; if (running) r.stop(); },
+      resume() { paused = false; listen(); },
+      stop() { if (over) return; stopping = true; if (running) r.stop(); else { over = true; o.ended(); } },
+      abort() { over = true; try { r.abort(); } catch (e) { /* already ended */ } },
+    };
   }
 
   /* ---------- the note's parts: the exam line by line and the plan item by item, stored as plain text for letters ---------- */
@@ -3684,7 +3756,7 @@ Psychiatrist`;
     if (!signed) {
       lang = selectEl('lang-' + v.id, Object.entries(LANGS), v.lang);
       lang.className = 'lang-pick'; lang.setAttribute('aria-label', 'Spoken language');
-      lang.addEventListener('change', () => { v.lang = lang.value; persist(); });
+      lang.addEventListener('change', () => { v.lang = lang.value; persist(); if (micReady) { renderKeepScroll = true; render(); } });
     }
     return h('section', { class: 'card session' },
       h('div', { class: 'session-head' },
@@ -3694,32 +3766,38 @@ Psychiatrist`;
           h('p', { class: 'subtitle' }, [TYPES[v.type].label, `${dayName(v.start)}, ${fmtTime(v.start)}`, MODES[v.mode]].join(' · '), ' · ', lang)),
         signed ? null : recControls(v, recording, mine && !!rec.paused, hasT)),
       needsCall(p) ? h('p', { class: 'flag-line' }, 'This patient still needs a safety follow-up.') : null,
-      signed ? null : h('p', { class: 'hint rec-hint' }, `Demo: recording plays a made-up ${sc.lang === 'en' ? 'English' : LANGS[sc.lang]} session${sc.interpreter ? ' with an interpreter' : ''}. The note is always written in English, and the recording is deleted when you sign.`),
+      signed ? null : h('p', { class: 'hint rec-hint' }, micReady
+        ? `Recording turns what’s said in ${LANGS[v.lang] || 'English'} into text with ${transcriber.label}. ${transcriber.heardBy}, so use made-up voices only. The note is always written in English, and the recording is deleted when you sign.`
+        : `Demo: recording plays a made-up ${sc.lang === 'en' ? 'English' : LANGS[sc.lang]} session${sc.interpreter ? ' with an interpreter' : ''}. The note is always written in English, and the recording is deleted when you sign.` + (canConnect ? ' To record from the microphone, open this page in Chrome, Edge or Safari.' : '')),
       h('div', { class: 'tabs', role: 'tablist', 'aria-label': 'Visit' }, [['context', 'Context'], ['note', 'Note'], ['transcript', 'Transcript']].map(([k, l]) => h('button', { class: 'tab', role: 'tab', type: 'button', 'aria-selected': String(tab === k), onclick: () => { ui.sessionTab = k; renderKeepScroll = true; render(); } }, l,
         k === 'transcript' && recording && !rec.paused ? h('span', { class: 'live-dot', title: 'Recording' }) : null, k === 'transcript' && hasT ? h('span', { class: 'count' }, String(v.transcript.length)) : null))),
       body);
   }
   // Heidi's capture controls in our look: microphone and level, the timer, and the red record button with its other ways in.
   function recControls(v, recording, paused, hasT) {
-    const micSel = selectEl('mic-' + v.id, [['default', 'Default microphone'], ['headset', 'USB headset'], ['laptop', 'Laptop microphone']], 'default');
+    // With a real microphone the transcriber hears the computer's default one, so that's the only one listed.
+    const micSel = selectEl('mic-' + v.id, micReady ? [['default', micName || 'Default microphone']] : [['default', 'Default microphone'], ['headset', 'USB headset'], ['laptop', 'Laptop microphone']], 'default');
     micSel.setAttribute('aria-label', 'Microphone');
-    const mic = h('span', { class: 'mic' }, h('span', { class: 'bars' + (recording && !paused ? ' on' : ''), 'aria-hidden': 'true' }, h('i'), h('i'), h('i'), h('i'), h('i')), micSel);
-    const timer = h('span', { class: 'timer', id: 'timer-' + v.id }, mmss(hasT ? v.transcript[v.transcript.length - 1].s : 0));
-    if (recording) return h('div', { class: 'rec-ctl' }, mic, timer, btn(paused ? 'Resume' : 'Pause', () => (paused ? resumeRec(v) : pauseRec(v))), btn('Stop', () => stopRec(v), 'danger stop'), btn('Skip to end', () => skipRec(v), 'quiet small'));
-    const start = () => { if (!v.consent) openConsent(v); else { ui.sessionTab = 'transcript'; startRec(v); } };
+    if (micReady) micSel.title = 'Recording uses the computer’s default microphone.';
+    const level = recording && !paused ? (rec.mic && liveLevels ? ' live' : ' on') : '';
+    const mic = h('span', { class: 'mic' }, h('span', { class: 'bars' + level, id: 'bars-' + v.id, 'aria-hidden': 'true' }, h('i'), h('i'), h('i'), h('i'), h('i')), micSel);
+    const timer = h('span', { class: 'timer', id: 'timer-' + v.id }, mmss(recording && rec.mic ? micElapsed(rec.mic) : hasT ? v.transcript[v.transcript.length - 1].s : 0));
+    if (recording) return h('div', { class: 'rec-ctl' }, mic, timer, btn(paused ? 'Resume' : 'Pause', () => (paused ? resumeRec(v) : pauseRec(v))), btn('Stop', () => (rec.mic ? stopMic(v) : stopRec(v)), 'danger stop'), rec.mic ? null : btn('Skip to end', () => skipRec(v), 'quiet small'));
+    const start = demo => () => { if (!v.consent) openConsent(v, demo); else { ui.sessionTab = 'transcript'; startRec(v, demo); } };
     const other = moreMenu([
+      micReady ? ['Play a made-up session instead', start(true)] : null,
       ['Dictate your own notes', () => toast('Dictation isn’t simulated in this prototype.')],
       ['Telehealth: capture the call’s audio', () => toast('Capturing a video call’s audio isn’t simulated in this prototype.')],
       ['Upload session audio', () => toast('Uploading a recording isn’t simulated in this prototype.')],
       ['Paste a transcript', () => openPaste(v)]], svgEl('<path d="M6 9l6 6 6-6"/>', 'chev'), 'btn-record rec-caret', 'Other ways to capture');
-    return h('div', { class: 'rec-ctl' }, mic, hasT ? timer : null, h('div', { class: 'split' }, btn(hasT ? 'Record again' : 'Start recording', start, 'record'), other));
+    return h('div', { class: 'rec-ctl' }, mic, hasT ? timer : null, h('div', { class: 'split' }, btn(hasT ? 'Record again' : 'Start recording', start(false), 'record'), other));
   }
   // Consent is asked when recording starts, as Heidi does, and kept on the visit.
-  function openConsent(v) {
+  function openConsent(v, demo) {
     const p = P(v.pid);
     openDialog('Recording consent', h('div', { class: 'stack' }, h('p', null, `Did ${p.name} agree to having this visit recorded?`), h('p', { class: 'hint' }, 'The recording is only used to write the note, and it is deleted when you sign the note.')), [
       btn('Cancel', closeDialog),
-      btn('They agreed, start recording', () => { v.consent = true; logEvent(v.pid, 'Agreed to the visit being recorded'); closeDialog(); ui.sessionTab = 'transcript'; startRec(v); }, 'primary')]);
+      btn('They agreed, start recording', () => { v.consent = true; logEvent(v.pid, 'Agreed to the visit being recorded'); closeDialog(); ui.sessionTab = 'transcript'; startRec(v, demo); }, 'primary')]);
   }
   function openPaste(v) {
     const box = textEl('paste-' + v.id, '', 8);
@@ -3775,8 +3853,8 @@ Psychiatrist`;
   // The transcript with its AI summary beside it. Picking a line lights up the summary points it went into; picking a point lights up its lines.
   function transcriptTab(v, recording) {
     const hasT = !!(v.transcript && v.transcript.length);
-    const list = h('ol', { class: 'transcript', id: 'tr-' + v.id }, (v.transcript || []).map((l, i) => lineEl(v, l, i)));
-    if (!hasT && !recording) return h('p', { class: 'empty' }, 'Start recording and the conversation shows up here, with each speaker labelled and English under anything said in another language. To use a transcript you already have, pick Paste a transcript from the menu beside the record button.');
+    const list = h('ol', { class: 'transcript', id: 'tr-' + v.id }, (v.transcript || []).map((l, i) => lineEl(v, l, i)), recording && rec.mic ? partialEl() : null);
+    if (!hasT && !recording) return h('p', { class: 'empty' }, (micReady ? 'Start recording and what’s said shows up here as you talk.' : 'Start recording and the conversation shows up here, with each speaker labelled and English under anything said in another language.') + ' To use a transcript you already have, pick Paste a transcript from the menu beside the record button.');
     return h('div', { class: 'tx-split' }, h('section', { class: 'tx-col', 'aria-label': 'Transcript' }, h('div', { class: 'tx-h' }, h('h3', null, 'Transcript')), list), summaryCol(v, recording, list));
   }
   // Scrolls a list just enough to show one of its items, without moving the page.
@@ -3831,17 +3909,31 @@ Psychiatrist`;
       h('div', { class: 'tx-h' }, h('h3', null, 'Summary'), h('span', { class: 'spacer' }), go2, promptBtn, stop),
       h('p', { class: 'hint' }, hint), out, note, body, status);
   }
-  function speaker(v, who) { const sc = DEMO_TRANSCRIPTS[v.demo] || {}; return who === 'dr' ? CLINIC.doctor : who === 'int' ? (sc.interpreter || 'Interpreter') : firstName(P(v.pid)); }
-  function lineEl(v, l, i) { const sc = DEMO_TRANSCRIPTS[v.demo] || {}; return h('li', { 'data-i': i, tabindex: '0', role: 'button', 'aria-pressed': 'false' }, h('span', { class: 'ts' }, mmss(l.s)), h('div', null, h('span', { class: 'who ' + l.who }, speaker(v, l.who)), l.en ? h('span', { lang: { zh: 'zh-Hans', pa: 'pa', yue: 'zh-Hant' }[sc.lang] || null }, l.text) : l.text, l.en ? h('span', { class: 'en' }, l.en) : null)); }
-  function startRec(v) {
-    if (!v.consent) { openConsent(v); return; }
+  // Lines from the microphone have no speaker ('un'), unless a speech-to-text service numbered the voices.
+  function speaker(v, l) { const sc = DEMO_TRANSCRIPTS[v.demo] || {}; return l.who === 'un' ? (l.voice ? `Voice ${l.voice}` : '') : l.who === 'dr' ? CLINIC.doctor : l.who === 'int' ? (sc.interpreter || 'Interpreter') : firstName(P(v.pid)); }
+  function lineEl(v, l, i) { const sc = DEMO_TRANSCRIPTS[v.demo] || {}, name = speaker(v, l); return h('li', { 'data-i': i, tabindex: '0', role: 'button', 'aria-pressed': 'false' }, h('span', { class: 'ts' }, mmss(l.s)), h('div', null, name ? h('span', { class: 'who ' + l.who }, name) : null, l.en ? h('span', { lang: { zh: 'zh-Hans', pa: 'pa', yue: 'zh-Hant' }[sc.lang] || null }, l.text) : l.text, l.en ? h('span', { class: 'en' }, l.en) : null)); }
+  // With `demo`, or where there's no microphone to use, recording plays the visit's made-up session line by line.
+  function startRec(v, demo) {
+    if (!v.consent) { openConsent(v, demo); return; }
+    if (micReady && !demo) { startMic(v); return; }
     stopTimer();
     v.transcript = []; v.summary = null; v.transcriptFrom = 'demo'; v.lang = (DEMO_TRANSCRIPTS[v.demo] || DEMO_TRANSCRIPTS.generic).lang; v.status = 'recording';
     rec = { vid: v.id, idx: 0, timer: setInterval(() => recTick(v), RM ? 60 : 800), paused: false };
     persist(); render();
   }
-  function pauseRec(v) { if (rec.vid !== v.id) return; clearInterval(rec.timer); rec.timer = null; rec.paused = true; renderKeepScroll = true; render(); }
-  function resumeRec(v) { if (rec.vid !== v.id) return; rec.paused = false; rec.timer = setInterval(() => recTick(v), RM ? 60 : 800); renderKeepScroll = true; render(); }
+  function pauseRec(v) {
+    if (rec.vid !== v.id) return;
+    clearInterval(rec.timer); rec.timer = null; rec.paused = true;
+    if (rec.mic) { rec.mic.pausedAt = Date.now(); if (rec.mic.t) rec.mic.t.pause(); }
+    renderKeepScroll = true; render();
+  }
+  function resumeRec(v) {
+    if (rec.vid !== v.id) return;
+    rec.paused = false;
+    if (rec.mic) { const m = rec.mic; m.pausedFor += Date.now() - m.pausedAt; m.pausedAt = 0; rec.timer = setInterval(() => micClock(v), 500); if (m.t) m.t.resume(); }
+    else rec.timer = setInterval(() => recTick(v), RM ? 60 : 800);
+    renderKeepScroll = true; render();
+  }
   function recTick(v) {
     const sc = DEMO_TRANSCRIPTS[v.demo] || DEMO_TRANSCRIPTS.generic;
     if (rec.idx >= sc.lines.length) { stopRec(v); return; }
@@ -3853,14 +3945,121 @@ Psychiatrist`;
   function skipRec(v) { const sc = DEMO_TRANSCRIPTS[v.demo] || DEMO_TRANSCRIPTS.generic; while (rec.idx < sc.lines.length) v.transcript.push(sc.lines[rec.idx++]); stopRec(v); }
   // When the recording stops, the open visit moves on to its note and the AI writes it, as Heidi does.
   const autoWrite = new Set();
-  function stopRec(v) {
+  // A recording the microphone cut short (`failed`) keeps its lines but doesn't go on to write the note.
+  function stopRec(v, failed) {
     stopTimer();
     if (v.status === 'recording') v.status = v.transcript.length ? 'recorded' : 'scheduled';
-    logEvent(v.pid, `Visit recorded (${v.transcript.length} lines)`);
-    if (v.transcript.length) { autoWrite.add(v.id); if (ui.view === 'visits' && ui.visitId === v.id) ui.sessionTab = 'note'; }
+    if (v.transcript.length) logEvent(v.pid, `Visit recorded (${v.transcript.length} lines)`);
+    if (v.transcript.length && !failed) { autoWrite.add(v.id); if (ui.view === 'visits' && ui.visitId === v.id) ui.sessionTab = 'note'; }
     persist(); softRender();
   }
-  function stopTimer() { if (rec.timer) clearInterval(rec.timer); rec = { vid: null, idx: 0, timer: null, paused: false }; }
+  function stopTimer() { if (rec.timer) clearInterval(rec.timer); if (rec.mic) quitMic(rec.mic); rec = { vid: null, idx: 0, timer: null, paused: false }; }
+
+  /* ---------- recording from the microphone, through the transcriber (core.js) ---------- */
+  // rec.mic holds the transcriber's handle, the microphone's stream for the level bars, and the clock, which leaves out pauses.
+  let micName = '';
+  // On phones a second listener on the microphone can cut speech recognition off, so the level bars there just animate.
+  const liveLevels = !(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+  const MIC_PROBLEMS = {
+    blocked: 'The browser blocked the microphone. Allow it for this site (the icon in the address bar), then start again.',
+    'no-microphone': 'No microphone was found. Check that one is connected, then start again.',
+    network: 'Speech recognition couldn’t reach its service. Check the connection, then start again.',
+    stopped: 'Speech recognition kept stopping. Start again, or try another browser.',
+  };
+  function startMic(v) {
+    stopTimer();
+    const before = { transcript: v.transcript, summary: v.summary, transcriptFrom: v.transcriptFrom, status: v.status };
+    v.transcript = []; v.summary = null; v.transcriptFrom = 'mic'; v.status = 'recording';
+    const m = { t: null, stream: null, audio: null, frame: 0, start: Date.now(), pausedFor: 0, pausedAt: 0, partial: '', lineAt: null, stopping: false, done: false, before };
+    rec = { vid: v.id, idx: 0, timer: setInterval(() => micClock(v), 500), paused: false, mic: m };
+    const o = {
+      lang: SPEECH_LANG[v.lang] || 'en-CA',
+      // A line's time is when its first words were heard.
+      partial: text => { if (text && m.lineAt == null) m.lineAt = micElapsed(m); m.partial = text; showPartial(v); },
+      line: (text, who, voice) => addMicLine(v, m, text, who, voice),
+      failed: code => micFailed(v, m, code),
+      ended: () => finishMic(v, m),
+    };
+    // Everything here runs inside the click that started recording, which browsers ask for before they listen.
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (liveLevels && AC) { try { m.audio = new AC(); } catch (e) { m.audio = null; } }
+    if (!transcriber.needsStream) m.t = transcriber.open(o);
+    if (transcriber.needsStream || m.audio) {
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+        if (m.done) { stream.getTracks().forEach(t => t.stop()); return; }
+        m.stream = stream; micName = (stream.getAudioTracks()[0] || {}).label || micName;
+        const sel = $('mic-' + v.id); if (sel && sel.options[0] && micName) sel.options[0].textContent = micName;
+        if (m.audio) meter(v, m, stream);
+        if (transcriber.needsStream) m.t = transcriber.open(Object.assign(o, { stream }));
+      }, err => {
+        // Without the stream the bars stay still; it only ends the recording if the transcriber needed it or the microphone was refused.
+        if (!m.done && (transcriber.needsStream || (err && err.name === 'NotAllowedError'))) micFailed(v, m, err && err.name === 'NotAllowedError' ? 'blocked' : 'no-microphone');
+      });
+    }
+    persist(); render();
+  }
+  function micElapsed(m) { return Math.max(0, Math.floor((Date.now() - m.start - m.pausedFor - (m.pausedAt ? Date.now() - m.pausedAt : 0)) / 1000)); }
+  function micClock(v) { const tm = $('timer-' + v.id); if (tm && rec.mic) tm.textContent = mmss(micElapsed(rec.mic)); }
+  function addMicLine(v, m, text, who, voice) {
+    if (m.done) return;
+    const l = { s: m.lineAt != null ? m.lineAt : micElapsed(m), who: who || 'un', text: text.charAt(0).toUpperCase() + text.slice(1) };
+    if (voice) l.voice = voice;
+    m.lineAt = null; m.partial = '';
+    v.transcript.push(l);
+    const list = $('tr-' + v.id);
+    if (list) { list.insertBefore(lineEl(v, l, v.transcript.length - 1), list.querySelector('.partial')); showPartial(v); }
+    persistSoon();
+  }
+  // The words of the line being spoken, under the finished lines, until the transcriber settles them.
+  const partialText = () => (rec.mic && rec.mic.partial) || (rec.paused ? 'Paused.' : 'Listening…');
+  function partialEl() { return h('li', { class: 'partial' }, h('span', { class: 'ts' }), h('div', null, partialText())); }
+  function showPartial(v) {
+    const list = $('tr-' + v.id); if (!list || !rec.mic) return;
+    const el = list.querySelector('.partial') || partialEl();
+    el.lastChild.textContent = partialText(); list.append(el); list.scrollTop = list.scrollHeight;
+  }
+  // The bars follow the microphone's loudness.
+  function meter(v, m, stream) {
+    const an = m.audio.createAnalyser(); an.fftSize = 512;
+    m.audio.createMediaStreamSource(stream).connect(an);
+    if (m.audio.state === 'suspended') m.audio.resume().catch(() => {});
+    const buf = new Uint8Array(an.fftSize), shape = [0.55, 0.8, 1, 0.8, 0.55];
+    const draw = () => {
+      if (m.done) return;
+      an.getByteTimeDomainData(buf);
+      let sum = 0; for (let i = 0; i < buf.length; i++) { const d = (buf[i] - 128) / 128; sum += d * d; }
+      const lvl = rec.paused ? 0 : Math.min(1, Math.sqrt(sum / buf.length) * 5);
+      document.querySelectorAll(`#bars-${v.id} i`).forEach((b, i) => { b.style.height = (4 + Math.round(lvl * 12 * shape[i])) + 'px'; });
+      m.frame = requestAnimationFrame(draw);
+    };
+    draw();
+  }
+  // Stop lets the transcriber finish the last words it heard, but doesn't wait on it for long.
+  function stopMic(v) {
+    const m = rec.mic; if (!m || m.stopping) return;
+    m.stopping = true; clearInterval(rec.timer); rec.timer = null;
+    if (m.t) m.t.stop(); else finishMic(v, m);
+    setTimeout(() => finishMic(v, m), 2500);
+  }
+  function finishMic(v, m, failed) {
+    if (m.done || rec.mic !== m) return;
+    if (m.partial) addMicLine(v, m, m.partial, 'un');
+    // A recording that heard nothing leaves the visit as it was, earlier transcript included.
+    if (!v.transcript.length) { Object.assign(v, m.before); stopTimer(); persist(); softRender(); return; }
+    stopRec(v, failed);
+  }
+  function micFailed(v, m, code) {
+    if (m.done || rec.mic !== m) return;
+    toast(code === 'language' ? `This browser can’t turn ${LANGS[v.lang] || 'this language'} into text. Pick another language beside the visit time, then start again.` : MIC_PROBLEMS[code] || MIC_PROBLEMS.stopped);
+    finishMic(v, m, true);
+  }
+  function quitMic(m) {
+    m.done = true;
+    if (m.t) m.t.abort();
+    if (m.stream) m.stream.getTracks().forEach(t => t.stop());
+    if (m.audio) m.audio.close().catch(() => {});
+    cancelAnimationFrame(m.frame);
+  }
   function usePasted(v, text) {
     const lines = text.split('\n').map(x => x.trim()).filter(Boolean);
     if (!lines.length) { toast('Paste the transcript first.'); return; }
