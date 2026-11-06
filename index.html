@@ -3077,8 +3077,9 @@ Psychiatrist`;
   function promptWho(v, l) { const sc = DEMO_TRANSCRIPTS[v.demo] || {}; return l.who === 'dr' ? 'Psychiatrist' : l.who === 'int' ? (sc.interpreter || 'Interpreter') : l.who === 'un' ? (l.voice ? `Voice ${l.voice}` : 'Speaker') : 'Patient'; }
   const unlabelled = v => (v.transcript || []).some(l => l.who === 'un');
   const UNLABELLED_RULE = "The transcript doesn't always say who spoke: lines marked Speaker, or Voice and a number, came from one microphone. Tell the psychiatrist and the patient apart only from what is said, and leave out anything when it isn't clear who said it.";
-  // The transcript as the prompts give it, numbered from 1; a line said in another language carries its English.
-  const promptLines = v => (v.transcript || []).map((l, i) => `${i + 1}. [${mmss(l.s)}] ${promptWho(v, l)}: ${l.text}${l.en ? ` (in English: ${l.en})` : ''}`).join('\n');
+  // The transcript as the prompts give it, numbered from 1; a line said in another language carries its English. The
+  // time is in round brackets, since a model reading "[00:35]" took the time for a line number to cite.
+  const promptLines = v => (v.transcript || []).map((l, i) => `${i + 1}. (${mmss(l.s)}) ${promptWho(v, l)}: ${l.text}${l.en ? ` (in English: ${l.en})` : ''}`).join('\n');
   function notePrompt(p, v, change) {
     const n = (v.transcript || []).length, lines = promptLines(v);
     const cur = change ? noteLines(v) : [];
@@ -3087,8 +3088,8 @@ Psychiatrist`;
       change ? `Change the psychiatrist's note for this visit as they ask: "${change}". Make only that change and keep the rest of the note as it is. ${visit} Write in English unless they ask for another language, translating anything said in another language.`
         : `Write the psychiatrist's note for this visit from the session transcript below. ${visit} Write the note in English, translating anything said in another language.`,
       `Write only what was explicitly said in the transcript${change ? ' or is already in the current note' : ''}. Never add, assume or infer anything: no findings, diagnoses, doses, frequencies, durations, referrals, instructions or reasons that nobody said. Do not judge appearance, speech, affect, thought process, insight or judgment from how the conversation went; include them only if the psychiatrist said them. Anything not mentioned stays blank. A blank is always better than a guess.${change ? ' If the request needs something that was not said, leave that part out.' : ''}`,
-      change ? `End every sentence with the numbers of the lines it comes from, in square brackets: transcript lines 1 to ${n}, or lines ${n + 1} to ${n + cur.length} of the current note, like: Speech: Slow and quiet. [20]  A sentence you cannot tie to a line will be removed.`
-        : 'End every sentence with the numbers of the transcript lines it comes from, in square brackets, like: Speech: Slow and quiet. [20]  A sentence you cannot tie to a line will be removed.',
+      change ? `End every sentence with the numbers of the lines it comes from (the number at the start of each line, never its time), in square brackets: transcript lines 1 to ${n}, or lines ${n + 1} to ${n + cur.length} of the current note, like: Speech: Slow and quiet. [20]  A sentence you cannot tie to a line will be removed.`
+        : 'End every sentence with the numbers of the transcript lines it comes from (the number at the start of each line, never its time), in square brackets, like: Speech: Slow and quiet. [20]  A sentence you cannot tie to a line will be removed.',
       ...(unlabelled(v) ? [UNLABELLED_RULE] : []),
       'Use exactly these headings, each on its own line followed by a colon: Mental Status Examination, Impression, Plan, Patient summary, Not interpreted in the room.',
       'Mental Status Examination: seven lines, each starting with its label and a colon, in this order: Appearance and behaviour, Speech, Mood and affect, Thought process, Thought content, Perception, Insight and judgment. Thought content includes suicidal ideation, as asked and answered. Leave a line empty after its label when the visit did not cover it.',
@@ -3189,7 +3190,7 @@ Psychiatrist`;
       'Cover how the patient is doing, symptoms, medication and side effects, alcohol and drugs, safety (thoughts of suicide or self-harm) and the plan. Leave out greetings and consent to recording.',
       'Use only what was said. Where an interpreter left something out or changed it, say so in that sentence.',
       ...(unlabelled(v) ? [UNLABELLED_RULE] : []),
-      'After every sentence, put the numbers of the transcript lines it comes from in square brackets, like: She now sleeps five or six hours a night. [4, 5]',
+      'After every sentence, put the numbers of the transcript lines it comes from (the number at the start of each line, never its time) in square brackets, like: She now sleeps five or six hours a night. [4, 5]',
       'Separate paragraphs with a blank line. No headings, lists or Markdown.',
       '', 'Transcript:', lines,
     ].join('\n');
