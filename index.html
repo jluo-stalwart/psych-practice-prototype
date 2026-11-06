@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="robots" content="noindex, nofollow">
 <meta name="deepgram-keys" content="https://psych-prototype-soniox-keys.andrew-b0f.workers.dev/deepgram-key">
+<meta name="ai-server" content="https://psych-prototype-soniox-keys.andrew-b0f.workers.dev/ai">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Psychiatry Practice Prototype</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -2754,14 +2755,18 @@ Psychiatrist`;
     try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => toast('Copied'), show); else show(); } catch (e) { show(); }
   }
 
-  /* ---------- AI: Claude writes notes and letters with the viewer's own account ---------- */
+  /* ---------- AI: writes notes and letters, on claude.ai with the viewer's own Claude account ---------- */
   let sampleFn = null, aiCtl = null;
   let sampleState = window.claude && typeof window.claude.use === 'function' ? 'checking' : 'off';
   const aiOff = () => !sampleFn && sampleState !== 'checking';
-  // Outside claude.ai (the public copy, or this page opened as a file) there is no Claude sign-in to use: Anthropic
-  // doesn't let other sites offer one. The viewer connects their own Claude account instead, with an API key from the
-  // Claude Console. The key stays in their browser and goes only to Anthropic, which bills their account for the AI.
-  const canConnect = sampleState === 'off';
+  // Outside claude.ai (the public copy, or this page opened as a file), pages built with the key server's address
+  // (soniox-keys/ and the README) have Cloudflare's AI write, on the clinic's account within its free daily allowance.
+  // Otherwise there is no Claude sign-in to use there: Anthropic doesn't let other sites offer one. The viewer connects
+  // their own Claude account instead, with an API key from the Claude Console. The key stays in their browser and goes
+  // only to Anthropic, which bills their account for the AI.
+  const offClaude = sampleState === 'off';
+  const AI_SERVER = offClaude ? (document.querySelector('meta[name="ai-server"]') || {}).content || '' : '';
+  const canConnect = offClaude && !AI_SERVER;
   const aiOffered = () => !!sampleFn || canConnect;
   const KEY_STORE = 'psych-practice-claude-key';
   const SDK_URL = 'https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@1.2.0/+esm';
@@ -2821,8 +2826,45 @@ Psychiatrist`;
     return me;
   }
   if (canConnect) { const k = savedKey(); if (k) { sampleFn = keySample(k); sampleState = 'ready'; } }
-  // Said under the AI buttons: whose Claude the AI runs on.
-  const aiWhose = () => (!canConnect ? 'It uses your Claude account.' : sampleFn ? 'It runs on the Claude account you connected.' : 'Connect your Claude account to use it, or copy the prompt into a chat at claude.ai.');
+  // Cloudflare's AI through the key server, its text coming as it's written, one JSON object a line.
+  function serverSample(url) {
+    return async (prompt, opts = {}) => {
+      const fail = (code, text, problem) => Object.assign(new Error(code), { code, text, problem });
+      const stopped = () => !!(opts.signal && opts.signal.aborted);
+      let res, text = '', end = null;
+      try { res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }), signal: opts.signal }); }
+      catch (e) { throw stopped() ? fail('cancelled') : fail('failed', '', 'Couldn’t reach the AI. Check your connection and try again.'); }
+      if (!res.ok) {
+        const code = (await res.json().catch(() => ({}))).error;
+        // The allowance starts again at midnight UTC, said in the viewer's own time.
+        if (code === 'daily_limit') throw fail('failed', '', `The clinic’s free AI allowance for today is used up. It starts again at ${new Date(Math.ceil(Date.now() / 864e5) * 864e5).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.`);
+        if (res.status === 429) throw fail('rate_limited');
+        throw fail('failed', '', 'The AI couldn’t write this just now. Try again in a little while.');
+      }
+      try {
+        const reader = res.body.getReader(), dec = new TextDecoder();
+        let buf = '';
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buf += dec.decode(value, { stream: true });
+          const lines = buf.split('\n');
+          buf = lines.pop();
+          for (const l of lines) {
+            if (!l.trim()) continue;
+            const m = JSON.parse(l);
+            if (m.t) { text += m.t; if (opts.onText) opts.onText({ text, delta: m.t }); }
+            if (m.done || m.error) end = m;
+          }
+        }
+      } catch (e) { throw stopped() ? fail('cancelled', text) : fail('failed', text, 'The AI stopped partway. Try again.'); }
+      if (!end || end.error) throw fail('failed', text, 'The AI stopped partway. Try again.');
+      return { text, truncated: !!end.truncated };
+    };
+  }
+  if (AI_SERVER) { sampleFn = serverSample(AI_SERVER); sampleState = 'ready'; }
+  // Said under the AI buttons: whose AI it is.
+  const aiWhose = () => (AI_SERVER ? 'Cloudflare’s AI writes it, on the clinic’s account, free up to a daily limit.' : !canConnect ? 'It uses your Claude account.' : sampleFn ? 'It runs on the Claude account you connected.' : 'Connect your Claude account to use it, or copy the prompt into a chat at claude.ai.');
   async function runAI(prompt, out, note, buttons, onDone) {
     if (aiCtl) return;
     // Not connected yet: connect first, then carry on, unless the page has been redrawn meanwhile.
@@ -2864,7 +2906,7 @@ Psychiatrist`;
       ...(unlabelled(v) ? [UNLABELLED_RULE] : []),
       'Use exactly these headings, each on its own line followed by a colon: Mental Status Examination, Impression, Plan, Patient summary, Not interpreted in the room.',
       'Mental Status Examination: seven lines, each starting with its label and a colon, in this order: Appearance and behaviour, Speech, Mood and affect, Thought process, Thought content, Perception, Insight and judgment. Thought content includes suicidal ideation, as asked and answered. Leave a line empty after its label when the visit did not cover it.',
-      "Impression: the psychiatrist's stated impression, in their words. Leave it empty if none was stated.",
+      "Impression: the psychiatrist's stated impression or diagnosis, in their words. A word of encouragement or acknowledgement, such as \"good\" or \"okay\", is not an impression. Leave it empty if none was stated.",
       'Plan: a numbered list of only what the psychiatrist said would happen, such as medication changes with the dose and timing exactly as said, referrals, safety steps and follow-up. Add a line starting "For the family doctor:" only if something was asked of the family doctor.',
       'Patient summary: up to five short sentences in plain language, addressed to the patient, repeating only what the psychiatrist told them. Leave it empty if nothing was decided.',
       'Not interpreted in the room: if an interpreter took part, list anything the patient said in another language that the interpretation left out or changed. Otherwise write None.',
@@ -2904,16 +2946,18 @@ Psychiatrist`;
     let dropped = 0;
     const cite = s => { const r = citedPieces(s, n); dropped += r.dropped; return r.kept.map(x => x.t).join(' '); };
     const lines = s => s.split('\n').map(l => l.trim()).filter(Boolean);
+    // Some models put a bullet before each line even when asked for plain text; only the plan keeps its markers.
+    const items = s => lines(s).map(l => l.replace(/^[-•*]\s+/, ''));
     const raw = parseNote(String(text || '').replace(/\[to confirm\]/gi, ''));
     const note = {
-      mse: lines(raw.mse).map(l => { const m = l.match(/^([A-Za-z ]+?)\s*:\s*(.*)$/); return m && MSE_ALIASES[m[1].toLowerCase()] ? `${m[1]}: ${cite(m[2])}`.trim() : cite(l); }).filter(Boolean).join('\n'),
-      impression: lines(raw.impression).map(cite).filter(Boolean).join('\n'),
+      mse: items(raw.mse).map(l => { const m = l.match(/^([A-Za-z ]+?)\s*:\s*(.*)$/); return m && MSE_ALIASES[m[1].toLowerCase()] ? `${m[1]}: ${cite(m[2])}`.trim() : cite(l); }).filter(Boolean).join('\n'),
+      impression: items(raw.impression).map(cite).filter(Boolean).join('\n'),
       plan: lines(raw.plan).map(l => {
         const g = l.match(/^for the family doctor\s*:\s*(.*)$/i), num = l.match(/^(\d+[.)]|[-•*])\s*(.*)$/), t = cite(g ? g[1] : num ? num[2] : l);
         return !t ? '' : g ? `For the family doctor: ${t}` : num ? `${num[1]} ${t}` : t;
       }).filter(Boolean).join('\n'),
-      summary: cite(lines(raw.summary).join(' ')),
-      interp: lines(raw.interp).map(cite).filter(Boolean).join('\n'),
+      summary: cite(items(raw.summary).join(' ')),
+      interp: items(raw.interp).map(cite).filter(Boolean).join('\n'),
     };
     if (/^none\.?$/i.test(note.interp)) note.interp = '';
     return { note, dropped };
@@ -3028,7 +3072,7 @@ Psychiatrist`;
   };
   const transcriber = [TRANSCRIBERS.deepgram, TRANSCRIBERS.soniox].find(t => t && t.available()) || TRANSCRIBERS.browser;
   // The microphone is used outside claude.ai (where pages can't reach it) when the transcriber can run here.
-  const micReady = canConnect && transcriber.available() && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  const micReady = offClaude && transcriber.available() && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
   // Speech recognition hears the words but not who said them, so its lines are 'un'. Browsers end recognition after a
   // pause in speech or a minute or so, so it starts again while the recording runs.
   function browserTranscriber(o) {
@@ -3981,8 +4025,8 @@ Psychiatrist`;
       // A finished run is kept with the intake, and the consult letter takes its history from it.
       const go2 = btn(shown ? 'Write a new one' : 'Write with AI', () => runAI(aiPrompt(a, ref), out, note, { go: go2, stop }, (text, res) => { copyBtn.hidden = false; if (!res.truncated) { it.ai = { text, at: Date.now() }; persist(); toast('Saved. The consult letter will use this history.'); } }), 'primary small', { hidden: !aiOffered() });
       const promptBtn = btn('Copy the AI prompt', ev => copyOrShow(aiPrompt(a, ref), ev.currentTarget, 'AI prompt'), 'small', { hidden: !aiOff() });
-      let hint = canConnect ? aiWhose() : sampleFn ? 'Uses your Claude account; it asks the first time.' : sampleState === 'checking' ? 'Checking whether AI writing is available here…' : 'AI writing isn’t available in this view. Copy the prompt into a chat at claude.ai to try it.';
-      if (shown) { out.textContent = shown; copyBtn.hidden = false; hint = (it.ai && it.ai.text ? sentence(`Written by Claude from these answers ${whenIn(it.ai.at)}`) :`Written by Claude from these answers in one AI call (about ${fmtNum(Math.round(aiPrompt(a, ref).length / 4))} tokens in, ${fmtNum(Math.round(shown.length / 4))} out).`) + ' The consult letter uses this history.'; }
+      let hint = offClaude ? aiWhose() : sampleFn ? 'Uses your Claude account; it asks the first time.' : sampleState === 'checking' ? 'Checking whether AI writing is available here…' : 'AI writing isn’t available in this view. Copy the prompt into a chat at claude.ai to try it.';
+      if (shown) { out.textContent = shown; copyBtn.hidden = false; hint = (it.ai && it.ai.text ? sentence(`Written by AI from these answers ${whenIn(it.ai.at)}`) :`Written by Claude from these answers in one AI call (about ${fmtNum(Math.round(aiPrompt(a, ref).length / 4))} tokens in, ${fmtNum(Math.round(shown.length / 4))} out).`) + ' The consult letter uses this history.'; }
       mainP.append(h('div', { class: 'toolbar' }, go2, promptBtn, stop, copyBtn, h('p', { class: 'hint' }, hint)), out, note);
     } else mainP.append(qaList(a));
     return h('div', { class: 'doc-grid' }, rail, mainP);
@@ -4050,7 +4094,7 @@ Psychiatrist`;
       needsCall(p) ? h('p', { class: 'flag-line' }, 'This patient still needs a safety follow-up.') : null,
       signed ? null : h('p', { class: 'hint rec-hint' }, micReady
         ? `${transcriber.hint(LANGS[v.lang] || 'English', v.lang || 'en')} ${transcriber.heardBy}, so use made-up voices only. The note is always written in English, and the recording is deleted when you sign.`
-        : `Demo: recording plays a made-up ${sc.lang === 'en' ? 'English' : LANGS[sc.lang]} session${sc.interpreter ? ' with an interpreter' : ''}. The note is always written in English, and the recording is deleted when you sign.` + (canConnect ? ' To record from the microphone, open this page in Chrome, Edge or Safari.' : '')),
+        : `Demo: recording plays a made-up ${sc.lang === 'en' ? 'English' : LANGS[sc.lang]} session${sc.interpreter ? ' with an interpreter' : ''}. The note is always written in English, and the recording is deleted when you sign.` + (offClaude ? ' To record from the microphone, open this page in Chrome, Edge or Safari.' : '')),
       h('div', { class: 'tabs', role: 'tablist', 'aria-label': 'Visit' }, [['context', 'Context'], ['note', 'Note'], ['transcript', 'Transcript']].map(([k, l]) => h('button', { class: 'tab', role: 'tab', type: 'button', 'aria-selected': String(tab === k), onclick: () => { ui.sessionTab = k; renderKeepScroll = true; render(); } }, l,
         k === 'transcript' && recording && !rec.paused ? h('span', { class: 'live-dot', title: 'Recording' }) : null, k === 'transcript' && hasT ? h('span', { class: 'count' }, String(v.transcript.length)) : null))),
       body);
@@ -4163,7 +4207,7 @@ Psychiatrist`;
     const promptBtn = btn('Copy the AI prompt', ev => copyOrShow(summaryPrompt(p, v), ev.currentTarget, 'AI prompt'), 'small', { hidden: !aiOff() || recording });
     const stale = sum && sum.from !== 'example' && sum.n !== n;
     const hint = recording ? 'The summary is written once the recording stops.'
-      : !sum ? (aiOffered() ? 'The AI sums up the visit in a few paragraphs and ties each sentence to the lines it came from.' + (canConnect ? ' ' + aiWhose() : '') : sampleState === 'checking' ? 'Checking whether AI writing is available here…' : 'AI writing isn’t available in this view. Copy the prompt into a chat at claude.ai to try it.')
+      : !sum ? (aiOffered() ? 'The AI sums up the visit in a few paragraphs and ties each sentence to the lines it came from.' + (offClaude ? ' ' + aiWhose() : '') : sampleState === 'checking' ? 'Checking whether AI writing is available here…' : 'AI writing isn’t available in this view. Copy the prompt into a chat at claude.ai to try it.')
       : (sum.from === 'example' ? 'Written by Claude ahead of time from this demo session.' : sentence(`Written by AI ${whenIn(sum.at)}`)) + (stale ? ` It covers ${sum.n} lines; the transcript now has ${n}.` : ' Pick a line or a sentence to see where it shows up.');
     const status = h('p', { class: 'hint tx-status', 'aria-live': 'polite' });
     // Each sentence is its own span inside the paragraph, so it can be lit up in place.
