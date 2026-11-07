@@ -3237,7 +3237,7 @@ Psychiatrist`;
   function summaryPrompt(p, v) {
     const lines = promptLines(v);
     return [
-      `Summarize this ${TYPES[v.type].label.toLowerCase()} for the psychiatrist in two to four short paragraphs of plain prose, the way a clinic letter reads, in the order things came up. It was with ${p.name} (${pron(p) || 'pronouns not given'}), spoken in ${LANGS[v.lang] || 'English'}. Write in English, translating anything said in another language.`,
+      `Summarize this ${TYPES[v.type].label.toLowerCase()} for the psychiatrist in plain prose, the way a clinic letter reads, in the order things came up, using as many short paragraphs as the visit needs; don't leave anything out to keep it short. It was with ${p.name} (${pron(p) || 'pronouns not given'}), spoken in ${LANGS[v.lang] || 'English'}. Write in English, translating anything said in another language.`,
       'Cover how the patient is doing, symptoms, medication and side effects, alcohol and drugs, safety (thoughts of suicide or self-harm) and the plan. Leave out greetings and consent to recording.',
       'Use only what was said. Where an interpreter left something out or changed it, say so in that sentence.',
       ...(unlabelled(v) ? [UNLABELLED_RULE] : []),
