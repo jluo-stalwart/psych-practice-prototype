@@ -6,6 +6,7 @@
 <meta name="deepgram-keys" content="https://psych-prototype-soniox-keys.andrew-b0f.workers.dev/deepgram-key">
 <meta name="ai-server" content="https://psych-prototype-soniox-keys.andrew-b0f.workers.dev/ai">
 <meta name="practice-trial" content="57499eeadb9ab9eade99fca3167e4e45c8ba33dad444c812f537445210690157">
+<meta name="practice-doctor" content="Dr. Tsang">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Psychiatry Practice Prototype</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -2535,7 +2536,9 @@ Psychiatrist`;
   /* ================= the clinic: everything below is new; the intake engine above comes from the intake prototype ================= */
   const $ = id => document.getElementById(id);
   const DAY = 86400000, HOUR = 3600000, MIN = 60000;
-  const CLINIC = { name: 'Demo Psychiatry Clinic', address: '210 – 1188 West Broadway, Vancouver BC', phone: '604-555-0101', fax: '604-555-0100', doctor: 'Dr. Lee', signature: 'Dr. Lee (demo), MD, FRCPC' };
+  // The psychiatrist's name. The testing version names its own doctor in a meta tag; the demo is Dr. Lee.
+  const DOCTOR = ((document.querySelector('meta[name="practice-doctor"]') || {}).content || '').trim() || 'Dr. Lee';
+  const CLINIC = { name: 'Demo Psychiatry Clinic', address: '210 – 1188 West Broadway, Vancouver BC', phone: '604-555-0101', fax: '604-555-0100', doctor: DOCTOR, signature: `${DOCTOR} (demo), MD, FRCPC` };
   const TYPES = { consult: { label: 'New consult', mins: 60 }, followup: { label: 'Follow-up', mins: 30 }, medreview: { label: 'Medication review', mins: 20 } };
   const MODES = { video: 'Video', inperson: 'In person', phone: 'Phone' };
   const LANGS = { en: 'English', zh: 'Mandarin', yue: 'Cantonese', pa: 'Punjabi' };
@@ -2895,10 +2898,10 @@ Psychiatrist`;
   const freshStore = () => (trial ? emptyClinic() : seed());
   const readRole = () => { try { return localStorage.getItem(KEY + ':role') === 'admin' ? 'admin' : 'doctor'; } catch (e) { return 'doctor'; } };
   let role = readRole();
-  const roleName = () => (role === 'doctor' ? 'Dr. Lee' : 'Sam (admin)');
+  const roleName = () => (role === 'doctor' ? CLINIC.doctor : 'Sam (admin)');
   const ui = { view: 'schedule', pid: null, tab: 'profile', visitId: null, letterId: null, inboxTab: 'in', inboxSel: null, day: clinicDay, schedView: 'day', apptSel: null, sessionTab: null, intakeTab: 'ai', taskScope: 'mine', filter: '',
     // The Day tab and the chart (chart.js): the chosen appointment, its file's tab, which entries are open, the chart's search and filters, and the template being built.
-    chartDay: null, dayAppt: null, dayPid: null, dayTab: 'charts', chartOpen: {}, chartQ: '', chartBy: '', chartPinned: false, chartFilter: 'all', focusEntry: null, tplTab: 'charts', tplDraft: null };
+    chartDay: null, dayAppt: null, dayPid: null, dayTab: 'charts', chartOpen: {}, chartQ: '', chartBy: '', chartPinned: false, chartFilter: 'all', focusEntry: null, tplTab: 'charts', tplDraft: null, railTop: null };
   const P = id => S.patients.find(p => p.id === id);
   const logEvent = (pid, text, t) => S.events.push({ at: t || Date.now(), pid, text });
 
@@ -3653,7 +3656,8 @@ Psychiatrist`;
     const key = ui.view === 'patient' ? 'patients' : ui.view;
     document.querySelectorAll('[data-nav]').forEach(b => b.setAttribute('aria-current', String(b.dataset.nav === key)));
     badges();
-    const keep = main.scrollTop;
+    const keep = main.scrollTop, rail = main.querySelector('.dr-scroll');
+    if (rail) ui.railTop = { day: +rail.dataset.day, top: rail.scrollTop }; // the Day tab's schedule keeps its place
     main.textContent = '';
     main.append(VIEWS[ui.view]());
     main.querySelectorAll('table.tbl').forEach(labelCells);
@@ -3860,36 +3864,65 @@ Psychiatrist`;
           h('p', { class: 'quote' }, clip(urgentOf(p)[0], 180))),
         btn('Mark contacted', () => openAck(p), 'small primary'))));
   }
-  function timeGutter() {
-    const gut = h('div', { class: 'cal-gut', style: `height:${(DAY_END - DAY_START) * 60 * PX}px` });
-    for (let hr = DAY_START + 1; hr < DAY_END; hr++) gut.append(h('span', { style: `top:${(hr - DAY_START) * 60 * PX}px` }, new Date(2026, 0, 1, hr).toLocaleTimeString('en-CA', { hour: 'numeric' })));
+  // The hours a schedule shows: the clinic's day, stretched to take in a visit started before or after it.
+  function dayHours(days) {
+    let lo = DAY_START, hi = DAY_END;
+    S.appts.forEach(a => {
+      const d = startOfDay(a.start); if (a.status === 'cancelled' || !days.includes(d)) return;
+      const s = (a.start - d) / (60 * MIN); lo = Math.min(lo, Math.floor(s)); hi = Math.max(hi, Math.ceil(s + a.mins / 60));
+    });
+    return [lo, Math.min(24, hi)];
+  }
+  function timeGutter([lo, hi]) {
+    const gut = h('div', { class: 'cal-gut', style: `height:${(hi - lo) * 60 * PX}px` });
+    for (let hr = lo + 1; hr < hi; hr++) gut.append(h('span', { style: `top:${(hr - lo) * 60 * PX}px` }, new Date(2026, 0, 1, hr).toLocaleTimeString('en-CA', { hour: 'numeric' })));
     return gut;
   }
   function dayGrid(day) {
-    return h('section', { class: 'cal day', 'aria-label': 'Day schedule' }, h('div', { class: 'cal-corner' }), h('div', { class: 'cal-dh' }, h('span', null, CLINIC.doctor), h('small', null, 'Psychiatrist')), timeGutter(), dayColumn(day));
+    const hrs = dayHours([day]);
+    return h('section', { class: 'cal day', 'aria-label': 'Day schedule' }, h('div', { class: 'cal-corner' }), h('div', { class: 'cal-dh' }, h('span', null, CLINIC.doctor), h('small', null, 'Psychiatrist')), timeGutter(hrs), dayColumn(day, hrs));
   }
   function weekGrid(ws) {
     const days = [0, 1, 2, 3, 4].map(i => addDays(ws, i)), today = startOfDay(Date.now());
     const cal = h('section', { class: 'cal', 'aria-label': 'Week schedule' }, h('div', { class: 'cal-corner' }));
     days.forEach(d => cal.append(h('button', { type: 'button', class: 'cal-dh as-btn' + (d === today ? ' today' : ''), 'aria-label': 'Open ' + fmtLong(d), onclick: () => { ui.day = d; ui.schedView = 'day'; ui.apptSel = null; render(); } }, h('span', null, new Date(d).toLocaleDateString('en-CA', { weekday: 'short' })), h('b', null, String(new Date(d).getDate())))));
-    cal.append(timeGutter());
-    days.forEach(d => cal.append(dayColumn(d)));
+    const hrs = dayHours(days);
+    cal.append(timeGutter(hrs));
+    days.forEach(d => cal.append(dayColumn(d, hrs)));
     return cal;
   }
-  function dayColumn(d) {
-    const col = h('div', { class: 'cal-day', style: `height:${(DAY_END - DAY_START) * 60 * PX}px;--hr:${60 * PX}px` });
-    if (isWeekend(d)) { col.append(h('div', { class: 'cal-closed' }, 'Closed')); return col; }
-    S.appts.filter(a => startOfDay(a.start) === d && a.status !== 'cancelled').forEach(a => {
+  // Appointments that overlap, like a visit started during a booked one, share the column side by side.
+  function apptLanes(list) {
+    const out = new Map();
+    let group = [], ends = [], groupEnd = -Infinity;
+    const close = () => { group.forEach(g => { g.of = ends.length; }); group = []; ends = []; };
+    list.slice().sort((x, y) => x.start - y.start || y.mins - x.mins).forEach(a => {
+      const end = a.start + a.mins * MIN;
+      if (a.start >= groupEnd) { close(); groupEnd = end; } else groupEnd = Math.max(groupEnd, end);
+      let lane = ends.findIndex(e => e <= a.start);
+      if (lane < 0) { lane = ends.length; ends.push(end); } else ends[lane] = end;
+      const g = { lane, of: 1 }; out.set(a.id, g); group.push(g);
+    });
+    close();
+    return out;
+  }
+  const laneStyle = (g, l, r) => (g && g.of > 1 ? `;left:calc(${l}px + (100% - ${l + r}px) * ${g.lane} / ${g.of});right:auto;width:calc((100% - ${l + r}px) / ${g.of} - 2px)` : '');
+  function dayColumn(d, [lo, hi]) {
+    const col = h('div', { class: 'cal-day', style: `height:${(hi - lo) * 60 * PX}px;--hr:${60 * PX}px` });
+    // A weekend is closed for booking, but a visit started then still shows.
+    if (isWeekend(d)) col.append(h('div', { class: 'cal-closed' }, 'Closed'));
+    const list = S.appts.filter(a => startOfDay(a.start) === d && a.status !== 'cancelled'), lanes = apptLanes(list);
+    list.forEach(a => {
       // Half-hour slots and shorter show one line; the type is in the tooltip and the label. A lock marks a signed note.
-      const p = P(a.pid), m = (a.start - d) / MIN - DAY_START * 60, short = a.mins <= 30, v = S.visits.find(x => x.id === a.visitId), locked = !!v && v.status === 'signed';
-      col.append(h('button', { class: `appt ${a.type} ${a.status}${short ? ' short' : ''}${a.id === ui.apptSel ? ' sel' : ''}`, type: 'button', style: `top:${m * PX}px;height:${a.mins * PX - 2}px`, onclick: ev => { ev.stopPropagation(); selectAppt(a); }, title: `${TYPES[a.type].label} · ${MODES[a.mode]} · ${APPT_STATUS[a.status][0]}`, 'aria-label': `${fmtTime(a.start)} ${p.name}, ${TYPES[a.type].label}, ${MODES[a.mode]}, ${APPT_STATUS[a.status][0]}${locked ? ', note signed' : ''}` },
+      const p = P(a.pid), m = (a.start - d) / MIN - lo * 60, short = a.mins <= 30, v = S.visits.find(x => x.id === a.visitId), locked = !!v && v.status === 'signed';
+      col.append(h('button', { class: `appt ${a.type} ${a.status}${short ? ' short' : ''}${a.id === ui.apptSel ? ' sel' : ''}`, type: 'button', style: `top:${m * PX}px;height:${a.mins * PX - 2}px${laneStyle(lanes.get(a.id), 3, 3)}`, onclick: ev => { ev.stopPropagation(); selectAppt(a); }, title: `${TYPES[a.type].label} · ${MODES[a.mode]} · ${APPT_STATUS[a.status][0]}`, 'aria-label': `${fmtTime(a.start)} ${p.name}, ${TYPES[a.type].label}, ${MODES[a.mode]}, ${APPT_STATUS[a.status][0]}${locked ? ', note signed' : ''}` },
         h('b', null, locked ? lockIcon() : null, p.name), short ? null : h('span', null, `${fmtTime(a.start)} · ${MODES[a.mode]}${a.status === 'arrived' ? ' · arrived' : ''}`)));
     });
-    if (d === startOfDay(Date.now())) { const m = (Date.now() - d) / MIN - DAY_START * 60; if (m > 0 && m < (DAY_END - DAY_START) * 60) col.append(h('div', { class: 'cal-now', style: `top:${m * PX}px` })); }
+    if (d === startOfDay(Date.now())) { const m = (Date.now() - d) / MIN - lo * 60; if (m > 0 && m < (hi - lo) * 60) col.append(h('div', { class: 'cal-now', style: `top:${m * PX}px` })); }
     // Like a clinic scheduler: click an empty time to book it.
     col.addEventListener('click', e => {
-      if (e.target.closest('.appt')) return;
-      const r = col.getBoundingClientRect(), start = d + (Math.floor((e.clientY - r.top) / PX / 15) * 15 + DAY_START * 60) * MIN;
+      if (e.target.closest('.appt') || isWeekend(d)) return;
+      const r = col.getBoundingClientRect(), start = d + (Math.floor((e.clientY - r.top) / PX / 15) * 15 + lo * 60) * MIN;
       if (start < Date.now()) { toast('That time has passed. Pick a later one.'); return; }
       openBooking({ start });
     });
@@ -4056,7 +4089,7 @@ Psychiatrist`;
   VIEWS.tasks = function () {
     const pg = h('div', { class: 'page narrow' });
     pg.append(pageHead('Tasks', ui.taskScope === 'all' ? "Everyone's tasks" : `For ${roleName()}`, h('div', { class: 'seg', role: 'group', 'aria-label': 'Whose tasks' }, [['mine', 'Mine'], ['all', 'Everyone']].map(([k, l]) => h('button', { type: 'button', 'aria-pressed': String(ui.taskScope === k), onclick: () => { ui.taskScope = k; render(); } }, l)))));
-    const title = inputEl('newTask', '', { placeholder: 'New task', 'aria-label': 'New task' }), who = selectEl('newTaskWho', [['admin', 'Admin'], ['doctor', 'Dr. Lee']], role), ptSel = selectEl('newTaskPt', [['', 'No patient']].concat(S.patients.map(p => [p.id, p.name])), ''), due = h('input', { id: 'newTaskDue', type: 'date', value: ymd(clinicDay), 'aria-label': 'Due date' });
+    const title = inputEl('newTask', '', { placeholder: 'New task', 'aria-label': 'New task' }), who = selectEl('newTaskWho', [['admin', 'Admin'], ['doctor', CLINIC.doctor]], role), ptSel = selectEl('newTaskPt', [['', 'No patient']].concat(S.patients.map(p => [p.id, p.name])), ''), due = h('input', { id: 'newTaskDue', type: 'date', value: ymd(clinicDay), 'aria-label': 'Due date' });
     who.setAttribute('aria-label', 'Who'); ptSel.setAttribute('aria-label', 'Patient');
     pg.append(h('form', { class: 'card add-task', onsubmit: e => { e.preventDefault(); if (!title.value.trim()) { title.focus(); return; } S.tasks.push({ id: uid('t'), title: title.value.trim(), pid: ptSel.value || null, who: who.value, due: fromYmd(due.value || ymd(clinicDay), 17, 0), done: false, urgent: false }); persist(); toast('Task added.'); render(); } },
       title, who, ptSel, due, h('button', { class: 'btn btn-primary', type: 'submit' }, 'Add')));
@@ -4080,7 +4113,7 @@ Psychiatrist`;
     return h('div', { class: 'task' + (t.done ? ' done' : '') }, box,
       h('div', { class: 'task-main' },
         open ? h('button', { class: 'task-title', type: 'button', onclick: open }, t.title) : h('span', { class: 'task-title' }, t.title),
-        h('small', null, t.urgent && !t.done ? h('span', { class: 'urgent-t' }, 'Urgent · ') : null, [t.who === 'doctor' ? 'Dr. Lee' : 'Admin', t.done ? `done ${whenIn(t.doneAt || t.due)}` : `due ${whenIn(t.due)}`].join(' · '))));
+        h('small', null, t.urgent && !t.done ? h('span', { class: 'urgent-t' }, 'Urgent · ') : null, [t.who === 'doctor' ? CLINIC.doctor : 'Admin', t.done ? `done ${whenIn(t.doneAt || t.due)}` : `due ${whenIn(t.due)}`].join(' · '))));
   }
 
   /* ---------- the patient profile: a banner with what matters for safety, then tabs named the way scheduler users know them ---------- */
@@ -4174,7 +4207,7 @@ Psychiatrist`;
       ['none', 'sent', 'progress'].includes(it.status) ? btn(it.status === 'none' ? 'Send intake link' : 'Send link again', () => openIntakeLink(p), 'small') : null,
       btn('Preview as patient', () => openPatientView(p.id), 'small')));
     if (it.status === 'done' && it.A) {
-      if (role === 'doctor' && !it.reviewedAt) { it.reviewedAt = Date.now(); doneTaskKey('review:' + p.id); logEvent(p.id, 'Intake reviewed by Dr. Lee'); persist(); badges(); }
+      if (role === 'doctor' && !it.reviewedAt) { it.reviewedAt = Date.now(); doneTaskKey('review:' + p.id); logEvent(p.id, `Intake reviewed by ${CLINIC.doctor}`); persist(); badges(); }
       wrap.append(intakeReport(p));
     } else if (it.status === 'progress' && it.A) wrap.append(h('section', { class: 'card' }, h('h2', null, 'Answers so far'), qaList(it.A)));
     else wrap.append(h('section', { class: 'card' }, h('p', { class: 'empty' }, 'The patient answers on their phone, one question at a time. Their answers show here.')));
@@ -4266,7 +4299,7 @@ Psychiatrist`;
   }
   function openPaste(v) {
     const box = textEl('paste-' + v.id, '', 8);
-    box.placeholder = 'Dr. Lee: How have you been sleeping?\nPatient: Better, about six hours.';
+    box.placeholder = CLINIC.doctor + ': How have you been sleeping?\nPatient: Better, about six hours.';
     openDialog('Paste a transcript', h('div', { class: 'form' }, field('Transcript', box, 'One line per turn, starting with the speaker.')), [
       btn('Cancel', closeDialog),
       btn('Use this transcript', () => { if (!box.value.trim()) { box.focus(); toast('Paste the transcript first.'); return; } closeDialog(); usePasted(v, box.value); }, 'primary')]);
@@ -4574,7 +4607,15 @@ Psychiatrist`;
     const gp = box('plan-gp', d.plan.gp, NOTE_HINTS.gp, val => { d.plan.gp = val; }, { attrs: { 'aria-label': 'For the family doctor' } }).box;
     const impression = text('impression', 'Impression'), summary = text('summary', 'Patient summary');
     const interp = v.note.interp || (v.transcript || []).some(l => l.who === 'int') ? text('interp', 'Not interpreted in the room') : null;
-    const fill = obj => { ['mse', 'impression', 'plan', 'summary', 'interp'].forEach(k => { v.note[k] = obj[k] || ''; }); v.noteDraft = null; if (v.status !== 'signed') v.status = 'drafted'; persist(); render(); };
+    const fill = obj => {
+      ['mse', 'impression', 'plan', 'summary', 'interp'].forEach(k => { v.note[k] = obj[k] || ''; });
+      // A part the doctor took out of the note stays out, whatever the AI wrote for it.
+      const off = new Set(v.off || []);
+      if (off.has('summary')) v.note.summary = '';
+      if (off.has('interp')) v.note.interp = '';
+      if (off.has('gp')) v.note.plan = planText(Object.assign(planParts(v.note.plan), { gp: '' }));
+      v.noteDraft = null; if (v.status !== 'signed') v.status = 'drafted'; persist(); render();
+    };
     const filled = ['mse', 'impression', 'plan', 'summary', 'interp'].some(k => (v.note[k] || '').trim());
     const left = r => (r.dropped ? ` ${r.dropped} ${r.dropped === 1 ? 'sentence' : 'sentences'} the AI couldn't tie to the transcript ${r.dropped === 1 ? 'was' : 'were'} left out.` : '');
     const stop = btn('Stop', () => { if (aiCtl) aiCtl.abort(); }, 'small', { hidden: true });
@@ -4621,7 +4662,7 @@ Psychiatrist`;
       // The AI leaves an unstated impression blank, so the hint says what still needs writing before the note can be signed.
       const missing = [['mse', 'the exam'], ['impression', 'the impression'], ['plan', 'the plan']].filter(([k]) => !(v.note[k] || '').trim()).map(([, w]) => w);
       signBtn.disabled = role !== 'doctor' || missing.length > 0;
-      signHint.textContent = role !== 'doctor' ? 'Only Dr. Lee can sign notes.' : missing.length ? `To sign, fill in ${join(missing)}.` : 'Signing locks the note and deletes the recording.';
+      signHint.textContent = role !== 'doctor' ? `Only ${CLINIC.doctor} can sign notes.` : missing.length ? `To sign, fill in ${join(missing)}.` : 'Signing locks the note and deletes the recording.';
       const n = boxes.filter(b => TO_CONFIRM.test(b.ta.value)).length;
       toConfirm.hidden = !n; toConfirm.textContent = `${n} ${n === 1 ? 'field' : 'fields'} to confirm`;
     };
@@ -4713,7 +4754,7 @@ Psychiatrist`;
           chip({ draft: 'Not sent', faxed: 'Faxed to pharmacy', stopped: 'Stopped' }[r.status], { draft: 'warn', faxed: 'ok', stopped: '' }[r.status]),
           r.status !== 'stopped' ? btn('Fax', () => openFax({ pid: p.id, to: 'pharmacy', subject: `Prescription: ${p.name}`, doc: { kind: 'rx', id: r.id } }), 'small') : null,
           r.status !== 'stopped' && role === 'doctor' ? btn('Stop', () => { r.status = 'stopped'; logEvent(p.id, `Stopped ${r.drug}`); persist(); render(); }, 'quiet small') : null))) : h('p', { class: 'empty small' }, 'No prescriptions from this clinic yet.'),
-        role !== 'doctor' ? h('p', { class: 'hint' }, 'Only Dr. Lee can write prescriptions.') : null),
+        role !== 'doctor' ? h('p', { class: 'hint' }, `Only ${CLINIC.doctor} can write prescriptions.`) : null),
       h('section', { class: 'card' }, h('h2', null, 'Reported in the intake'),
         intakeMeds.length ? h('div', { class: 'list' }, intakeMeds.map(m => h('div', { class: 'li' }, h('span', null, `${m.name}${known(m.dose) ? ' ' + m.dose : ''}${known(m.freq) ? ', ' + m.freq : ''}`)))) : h('p', { class: 'empty small' }, 'None reported.'),
         h('p', { class: 'hint' }, 'PharmaNet is not connected in this prototype.')));
@@ -4724,7 +4765,7 @@ Psychiatrist`;
     const docs = [];
     S.faxes.filter(f => f.dir === 'in' && f.pid === p.id).forEach(f => docs.push({ at: f.at, title: f.subject, src: `Fax from ${f.fromName}`, open: () => openFaxView(f) }));
     S.letters.filter(l => l.pid === p.id).forEach(l => docs.push({ at: l.created, title: l.title, src: l.status === 'faxed' ? 'Sent to the family doctor' : 'Draft', open: () => openDocPreview(l.title, letterPaper(l.text)) }));
-    S.rx.filter(r => r.pid === p.id).forEach(r => docs.push({ at: r.created, title: `Prescription: ${r.drug} ${r.strength}`, src: 'Written by Dr. Lee', open: () => openDocPreview('Prescription', rxPaper(p, r)) }));
+    S.rx.filter(r => r.pid === p.id).forEach(r => docs.push({ at: r.created, title: `Prescription: ${r.drug} ${r.strength}`, src: `Written by ${CLINIC.doctor}`, open: () => openDocPreview('Prescription', rxPaper(p, r)) }));
     if (p.intake.status === 'done') docs.push({ at: p.intake.completedAt, title: 'Pre-visit questionnaire', src: 'Filled in online by the patient', open: () => openTab(p, 'intake') });
     docs.sort((x, y) => y.at - x.at);
     const upload = h('input', { type: 'file', id: 'upload-' + p.id, class: 'visually-hidden', onchange: e => { const f = e.target.files[0]; if (f) { logEvent(p.id, `File added: ${f.name}`); persist(); toast(`${f.name} noted (demo: the file isn't stored).`); render(); } } });
@@ -4738,7 +4779,7 @@ Psychiatrist`;
     const dlg = $('dialog');
     dlg.className = 'dialog' + (wide ? ' wide' : '');
     dlg.textContent = '';
-    dlg.append(h('div', { class: 'dlg-h' }, h('h2', { id: 'dlgTitle' }, title), h('button', { class: 'x', type: 'button', 'aria-label': 'Close', onclick: closeDialog }, '×')), h('div', { class: 'dlg-b' }, body), actions && actions.length ? h('div', { class: 'dlg-f' }, actions) : null);
+    dlg.append(h('div', { class: 'dlg-h' }, h('h2', { id: 'dlgTitle' }, title), h('button', { class: 'x', type: 'button', 'aria-label': 'Close', onclick: closeDialog }, '×')), h('div', { class: 'dlg-b' }, body), ...(actions && actions.length ? [h('div', { class: 'dlg-f' }, actions)] : []));
     dlgReturn = document.activeElement; $('overlay').hidden = false;
     setTimeout(() => { const f = dlg.querySelector('.dlg-b input:not([type=hidden]):not([type=checkbox]), .dlg-b select, .dlg-b textarea') || dlg.querySelector('.dlg-f .btn-primary') || dlg.querySelector('.x'); if (f) f.focus(); }, 0);
   }
@@ -4854,7 +4895,7 @@ Psychiatrist`;
       role === 'doctor' && a.status !== 'cancelled' ? btn(noteLabel, () => { closeDialog(); startVisit(a); }, 'primary') : null]);
   }
   function openNewVisit(pid, kind) {
-    if (role !== 'doctor') { toast('Only Dr. Lee starts visits.'); return; }
+    if (role !== 'doctor') { toast(`Only ${CLINIC.doctor} starts visits.`); return; }
     const ptSel = selectEl('nv-pt', [['', 'Choose a patient…']].concat(S.patients.slice().sort((x, y) => x.name.localeCompare(y.name)).map(p => [p.id, p.name])), pid || '');
     const typeSel = selectEl('nv-type', Object.entries(TYPES).map(([k, t]) => [k, t.label]), kind === 'consult' ? 'consult' : 'followup');
     const modeSel = selectEl('nv-mode', Object.entries(MODES), 'phone');
@@ -4923,7 +4964,7 @@ Psychiatrist`;
   }
   function openDocPreview(title, el) { openDialog(title, el, [btn('Close', closeDialog)], true); }
   function openRx(p) {
-    if (role !== 'doctor') { toast('Only Dr. Lee can write prescriptions.'); return; }
+    if (role !== 'doctor') { toast(`Only ${CLINIC.doctor} can write prescriptions.`); return; }
     const STREET = ['cocaine', 'meth', 'heroin', 'fentanyl', 'MDMA', 'LSD', 'psilocybin', 'cannabis'];
     const list = h('datalist', { id: 'drugList' }, DRUGS.filter(d => !STREET.includes(d.label)).map(d => h('option', { value: d.label.charAt(0).toUpperCase() + d.label.slice(1) })));
     const f = { drug: inputEl('rx-drug', '', { list: 'drugList', autocomplete: 'off', placeholder: 'For example, escitalopram' }), str: inputEl('rx-str', '', { placeholder: 'For example, 10 mg tablets' }), sig: textEl('rx-sig', '', 2), qty: inputEl('rx-qty', '30 tablets'), ref: inputEl('rx-ref', '0', { inputmode: 'numeric' }), note: inputEl('rx-note', '') };
@@ -5001,7 +5042,8 @@ Psychiatrist`;
       }, 'primary')], true);
   }
   function askResetDemo() {
-    openDialog(trial ? 'Start over?' : 'Reset the demo?', h('p', null, trial ? 'Every patient, appointment, fax and note you added is removed, and the clinic starts empty again.' : 'Every patient, appointment, fax and note goes back to how the demo started. Your changes in this browser are lost.'), [btn('Cancel', closeDialog), btn(trial ? 'Start over' : 'Reset', () => { stopTimer(); S = freshStore(); persist(); closeDialog(); Object.assign(ui, { view: 'schedule', pid: null, tab: 'profile', visitId: null, letterId: null, inboxSel: null, day: clinicDay, schedView: 'day', apptSel: null, sessionTab: null, editing: false }); toast(trial ? 'The clinic is empty again.' : 'Demo data reset.'); go('schedule'); }, 'danger')]);
+    openDialog(trial ? 'Start over?' : 'Reset the demo?', h('p', null, trial ? 'Every patient, appointment, fax and note you added is removed, and the clinic starts empty again.' : 'Every patient, appointment, fax and note goes back to how the demo started. Your changes in this browser are lost.'), [btn('Cancel', closeDialog), btn(trial ? 'Start over' : 'Reset', () => { stopTimer(); S = freshStore(); persist(); closeDialog(); Object.assign(ui, { view: 'schedule', pid: null, tab: 'profile', visitId: null, letterId: null, inboxSel: null, day: clinicDay, schedView: 'day', apptSel: null, sessionTab: null, editing: false,
+      chartDay: null, dayAppt: null, dayPid: null, dayTab: 'charts', chartOpen: {}, chartQ: '', chartBy: '', chartPinned: false, chartFilter: 'all', focusEntry: null, tplTab: 'charts', tplDraft: null, railTop: null }); toast(trial ? 'The clinic is empty again.' : 'Demo data reset.'); go('schedule'); }, 'danger')]);
   }
 
   /* ---------- charting, laid out like Jane's (decided 2026-11-06, from Jane's product tour) ---------- */
@@ -5076,6 +5118,10 @@ Psychiatrist`;
 
   /* the Day tab */
   const apptOfVisit = v => S.appts.find(a => a.visitId === v.id);
+  // In the patient's own file, the chart goes with today's appointment that still needs its note, as on the Day tab.
+  const todayAppt = p => S.appts.filter(a => a.pid === p.id && startOfDay(a.start) === startOfDay(Date.now()) && !['cancelled', 'noshow'].includes(a.status)).sort((x, y) => x.start - y.start)
+    .find(a => { const v = S.visits.find(x => x.id === a.visitId); return !v || v.status !== 'signed'; }) || null;
+  const recordingNow = () => !!rec.vid && !!(rec.timer || rec.paused);
   VIEWS.visits = function () {
     const pg = h('div', { class: 'page wide' });
     // Opened from elsewhere (Start visit, Notes to sign): turn to the visit's day, pick its appointment, open its entry.
@@ -5091,38 +5137,43 @@ Psychiatrist`;
     const sel = appts.find(a => a.id === ui.dayAppt) || null;
     const p = sel ? P(sel.pid) : ui.dayPid ? P(ui.dayPid) : null;
     pg.append(h('div', { class: 'dayv' + (p ? ' has-sel' : '') }, dayRail(day, appts, sel), p ? h('div', { class: 'day-chart' }, profileView(p, { day: true, appt: sel })) : dayEmpty(day, appts)));
+    // The schedule keeps where it was scrolled to on the same day; a new day, or a visit opened from elsewhere, scrolls to its appointment.
+    const keepTop = !want && ui.railTop && ui.railTop.day === day ? ui.railTop.top : null;
     setTimeout(() => {
       const sc = main.querySelector('.dr-scroll'), mark = main.querySelector('.dr-appt.sel') || main.querySelector('.dr-now') || main.querySelector('.dr-appt');
-      if (sc && mark && !sc.dataset.kept) sc.scrollTop = Math.max(0, mark.offsetTop - 60);
+      if (sc && keepTop != null) sc.scrollTop = keepTop;
+      else if (sc && mark) sc.scrollTop = Math.max(0, mark.offsetTop - 60);
       if (ui.focusEntry) { const el = main.querySelector(`[data-entry="${ui.focusEntry}"]`); ui.focusEntry = null; if (el) el.scrollIntoView({ block: 'start' }); }
     }, 0);
     return pg;
   };
   // The day down the left, as in Jane: the date, the practitioner, and the day's appointments on a time line.
   function dayRail(day, appts, sel) {
-    const today = startOfDay(Date.now()), RPX = 1.1;
-    const turn = d => { ui.chartDay = d; ui.dayAppt = null; ui.dayPid = null; render(); };
+    const today = startOfDay(Date.now()), RPX = 1.1, [lo, hi] = dayHours([day]);
+    // A recording's visit stays on screen until it's stopped, so its Stop button can't go missing.
+    const held = () => { if (!recordingNow()) return false; toast('Stop the recording first.'); return true; };
+    const turn = d => { if (held()) { pick.value = ymd(day); return; } ui.chartDay = d; ui.dayAppt = null; ui.dayPid = null; render(); };
     const pick = h('input', { type: 'date', class: 'date-pick', value: ymd(day), 'aria-label': 'Go to a date', title: 'Go to a date' });
     pick.addEventListener('change', () => { const [y, m, d] = pick.value.split('-').map(Number); if (y) turn(new Date(y, m - 1, d).getTime()); });
-    const gut = h('div', { class: 'dr-gut', style: `height:${(DAY_END - DAY_START) * 60 * RPX}px` });
-    for (let hr = DAY_START + 1; hr < DAY_END; hr++) gut.append(h('span', { style: `top:${(hr - DAY_START) * 60 * RPX}px` }, new Date(2026, 0, 1, hr).toLocaleTimeString('en-CA', { hour: 'numeric' })));
-    const col = h('div', { class: 'dr-col', style: `height:${(DAY_END - DAY_START) * 60 * RPX}px;--hr:${60 * RPX}px` });
+    const gut = h('div', { class: 'dr-gut', style: `height:${(hi - lo) * 60 * RPX}px` });
+    for (let hr = lo + 1; hr < hi; hr++) gut.append(h('span', { style: `top:${(hr - lo) * 60 * RPX}px` }, new Date(2026, 0, 1, hr).toLocaleTimeString('en-CA', { hour: 'numeric' })));
+    const col = h('div', { class: 'dr-col', style: `height:${(hi - lo) * 60 * RPX}px;--hr:${60 * RPX}px` });
     if (isWeekend(day)) col.append(h('div', { class: 'cal-closed' }, 'Closed'));
+    const lanes = apptLanes(appts);
     appts.forEach(a => {
       const pt = P(a.pid), v = S.visits.find(x => x.id === a.visitId), signed = !!v && v.status === 'signed', here = ['arrived', 'inprogress', 'done'].includes(a.status);
-      const top = ((a.start - day) / MIN - DAY_START * 60) * RPX;
-      col.append(h('button', { type: 'button', class: `dr-appt ${a.type} ${a.status}${a === sel ? ' sel' : ''}${a.mins <= 30 ? ' short' : ''}`, style: `top:${top}px;height:${a.mins * RPX - 2}px`, 'aria-pressed': String(a === sel),
+      const top = ((a.start - day) / MIN - lo * 60) * RPX;
+      col.append(h('button', { type: 'button', class: `dr-appt ${a.type} ${a.status}${a === sel ? ' sel' : ''}${a.mins <= 30 ? ' short' : ''}`, style: `top:${top}px;height:${a.mins * RPX - 2}px${laneStyle(lanes.get(a.id), 3, 2)}`, 'aria-pressed': String(a === sel),
         'aria-label': `${fmtTime(a.start)} ${pt.name}, ${TYPES[a.type].label}, ${APPT_STATUS[a.status][0]}${signed ? ', note signed' : ''}`,
-        onclick: () => { ui.dayAppt = a.id; ui.dayPid = a.pid; ui.dayTab = 'charts'; renderKeepScroll = true; render(); showOnPhone('.day-chart', 1000); } },
+        onclick: () => { if (a !== sel && held()) return; ui.dayAppt = a.id; ui.dayPid = a.pid; ui.dayTab = 'charts'; renderKeepScroll = true; render(); showOnPhone('.day-chart', 1000); } },
         h('span', { class: 'dr-t' }, `${fmtTime(a.start)} – ${fmtTime(a.start + a.mins * MIN)}`, signed ? lockIcon() : here ? svgEl(CH_ICON.tick, 'tick') : null),
         h('b', null, pt.name), a.mins > 30 ? h('small', null, `${TYPES[a.type].label} · ${MODES[a.mode]}`) : null));
     });
-    if (day === today) { const m = (Date.now() - day) / MIN - DAY_START * 60; if (m > 0 && m < (DAY_END - DAY_START) * 60) col.append(h('div', { class: 'dr-now', style: `top:${m * RPX}px` }, h('span', null, fmtTime(Date.now())))); }
-    const scroll = h('div', { class: 'dr-scroll' }, h('div', { class: 'dr-grid' }, gut, col));
-    scroll.addEventListener('scroll', () => { scroll.dataset.kept = '1'; }, { once: true });
+    if (day === today) { const m = (Date.now() - day) / MIN - lo * 60; if (m > 0 && m < (hi - lo) * 60) col.append(h('div', { class: 'dr-now', style: `top:${m * RPX}px` }, h('span', null, fmtTime(Date.now())))); }
+    const scroll = h('div', { class: 'dr-scroll', 'data-day': String(day) }, h('div', { class: 'dr-grid' }, gut, col));
     return h('aside', { class: 'card dayrail', 'aria-label': 'Day schedule' },
       h('div', { class: 'dr-date' }, new Date(day).toLocaleDateString('en-CA', { month: 'long', day: 'numeric', year: 'numeric' })),
-      h('div', { class: 'dr-who' }, h('span', { class: 'avatar sm', 'aria-hidden': 'true' }, 'DL'),
+      h('div', { class: 'dr-who' }, h('span', { class: 'avatar sm', 'aria-hidden': 'true' }, CLINIC.doctor.split(/[\s.]+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase()),
         h('span', { class: 'dr-who-t' }, h('b', null, day === today ? 'Today' : new Date(day).toLocaleDateString('en-CA', { weekday: 'long' })), h('small', null, fmtDay(day)), h('span', null, CLINIC.doctor)),
         h('span', { class: 'dr-n', title: `${appts.length} appointment${appts.length === 1 ? '' : 's'}` }, String(appts.length))),
       scroll,
@@ -5133,7 +5184,8 @@ Psychiatrist`;
   function dayEmpty(day, appts) {
     return h('section', { class: 'card day-empty' }, svgEl(CH_ICON.chart, 'day-empty-ico'),
       h('h2', null, appts.length ? 'Pick an appointment' : isWeekend(day) ? 'The clinic is closed' : 'No appointments this day'),
-      h('p', { class: 'hint' }, 'Its patient’s chart opens here: every chart entry and the intake form, and the visit’s recording and note.'));
+      h('p', { class: 'hint' }, appts.length ? 'Its patient’s chart opens here: every chart entry and the intake form, and the visit’s recording and note.'
+        : `Go to another day with the arrows or the date${role === 'doctor' ? ', or use New visit for one that isn’t booked' : ''}.`));
   }
   // The patient file's tabs are shown on the Day tab too, so links between them stay where the doctor is.
   function openTab(p, k) { if (ui.view === 'visits') { ui.dayTab = k; renderKeepScroll = true; render(); } else openPatient(p.id, k); }
@@ -5150,7 +5202,7 @@ Psychiatrist`;
   const setPinned = (p, x, on) => { (x.kind === 'visit' ? x.v : x.kind === 'entry' ? x.e : p.intake).pinned = on; };
   const longDate = ms => new Date(ms).toLocaleDateString('en-CA', { month: 'long', day: 'numeric', year: 'numeric' });
   function chartTab(p, ctx) {
-    const a = ctx && ctx.appt, all = chartEntries(p), filt = ui.chartFilter || 'all';
+    const a = (ctx && ctx.appt) || todayAppt(p), all = chartEntries(p), filt = ui.chartFilter || 'all';
     const shown = all.filter(x => (!ui.chartPinned || x.pinned) && (filt === 'all' || (filt === 'signed' ? x.signed && x.kind !== 'intake' : filt === 'draft' ? !x.signed : x.kind === 'intake')));
     const list = h('div', { class: 'ch-list' }, shown.map(x => entryCard(p, x)));
     const none = h('p', { class: 'empty ch-none', hidden: true }, 'No chart entries match.');
@@ -5189,13 +5241,14 @@ Psychiatrist`;
       btn([svgEl(CH_ICON.star, 'ico'), 'Pinned', h('span', { class: 'count' }, String(pinned))], () => { ui.chartPinned = !ui.chartPinned; renderKeepScroll = true; render(); }, ui.chartPinned ? 'small on' : 'small', { 'aria-pressed': String(!!ui.chartPinned) }),
       btn([svgEl(CH_ICON.alert, 'ico'), 'Alert'], () => openAlert(p), p.alert ? 'small on' : 'small', { title: p.alert ? 'Change the chart alert' : 'Add an alert to the top of the chart' }),
       moreMenu(Object.entries(FILTERS).map(([k, l]) => [(filt === k ? '✓ ' : '') + l, () => setF(k)]).concat([['Copy the chart as text', () => copyText(all.map(entryText).join('\n\n'))]]), [svgEl(CH_ICON.filter, 'ico'), filt === 'all' ? 'Filter / export' : FILTERS[filt]], 'btn-small' + (filt === 'all' ? '' : ' btn-on')),
-      btn([svgEl(CH_ICON.expand, 'ico'), open ? 'Collapse all' : 'Expand all'], () => { all.forEach(x => { ui.chartOpen[x.key] = open ? 'closed' : x.signed || x.kind === 'intake' || role !== 'doctor' ? 'open' : 'edit'; }); renderKeepScroll = true; render(); }, 'small'));
+      btn([svgEl(CH_ICON.expand, 'ico'), open ? 'Collapse all' : 'Expand all'], () => { all.forEach(x => { if (open && isRecording(x)) return; ui.chartOpen[x.key] = open ? 'closed' : x.signed || x.kind === 'intake' || role !== 'doctor' ? 'open' : 'edit'; }); renderKeepScroll = true; render(); }, 'small'));
   }
-  // An entry opens to read it, or, while it's a draft, to fill it in; drafts start open for the doctor.
+  const isRecording = x => x.kind === 'visit' && rec.vid === x.v.id && recordingNow();
+  // An entry opens to read it, or, while it's a draft, to fill it in; drafts start open for the doctor. Only the doctor fills one in.
   const entryMode = x => (x.signed || x.kind === 'intake' ? 'closed' : role === 'doctor' ? 'edit' : 'open');
   function entryCard(p, x) {
-    const st = ui.chartOpen[x.key] || entryMode(x), date = longDate(x.at);
-    const toggle = () => { ui.chartOpen[x.key] = st === 'closed' ? (x.signed || x.kind === 'intake' || role !== 'doctor' ? 'open' : 'edit') : 'closed'; renderKeepScroll = true; render(); };
+    const st0 = ui.chartOpen[x.key] || entryMode(x), st = st0 === 'edit' && role !== 'doctor' ? 'open' : st0, date = longDate(x.at);
+    const toggle = () => { if (st !== 'closed' && isRecording(x)) { toast('Stop the recording first.'); return; } ui.chartOpen[x.key] = st === 'closed' ? (x.signed || x.kind === 'intake' || role !== 'doctor' ? 'open' : 'edit') : 'closed'; renderKeepScroll = true; render(); };
     const head = h('header', { class: 'ce-h' },
       h('button', { type: 'button', class: 'ce-star' + (x.pinned ? ' on' : ''), 'aria-pressed': String(x.pinned), 'aria-label': x.pinned ? 'Unpin' : 'Pin to the top', title: x.pinned ? 'Pinned to the top' : 'Pin to the top', onclick: () => { setPinned(p, x, !x.pinned); persist(); renderKeepScroll = true; render(); } }, svgEl(CH_ICON.star, 'ico')),
       h('button', { type: 'button', class: 'ce-title', 'aria-expanded': String(st !== 'closed'), onclick: toggle }, h('span', null, date), ' – ', h('b', null, x.title)),
@@ -5313,8 +5366,8 @@ Psychiatrist`;
       : t === 'body' || t === 'sketch' ? (v && (v.pins.length || v.strokes.length) ? [v.pins.map((q, i) => `${i + 1}. ${(q.note || 'marked').trim().replace(/[.\s]+$/, '')}`).join('; '), v.strokes.length && !v.pins.length ? 'drawn on' : ''].filter(Boolean).join('; ') : '')
       : t === 'signature' ? (v && v.strokes.length ? 'signed' : '')
       : t === 'file' ? (v || []).map(f => f.name).join(', ')
-      : t === 'mse' ? MSE_PARTS.filter(([k]) => v && (v[k] || '').trim()).map(([k, l]) => `${l}: ${v[k].trim()}`).join('; ')
-      : t === 'plan' ? (v || []).filter(x => x.trim()).map((x, i) => `${i + 1}. ${x.trim()}`).join(' ')
+      : t === 'mse' ? MSE_PARTS.filter(([k]) => v && (v[k] || '').trim()).map(([k, l]) => `${l}: ${v[k].trim().replace(/[.;\s]+$/, '')}`).join('; ')
+      : t === 'plan' ? (v || []).filter(x => x.trim()).map((x, i) => `${i + 1}. ${x.trim().replace(/[.\s]+$/, '')}.`).join(' ')
       : '';
     return s ? `${it.label}: ${s.replace(/[.\s]+$/, '')}.` : '';
   }
@@ -5342,7 +5395,9 @@ Psychiatrist`;
       const min = +it.min || 0, max = scaleMax(it), unset = it.value == null;
       const r = h('input', { type: 'range', id, min: String(min), max: String(max), step: '1', value: String(unset ? Math.round((min + max) / 2) : it.value), class: unset ? 'unset' : null, 'aria-label': it.label });
       const out = h('output', { for: id, class: 'it-scale-v' }, unset ? 'Not scored yet' : `${it.value} out of ${max}`);
-      r.addEventListener('input', () => { it.value = +r.value; r.classList.remove('unset'); out.textContent = `${it.value} out of ${max}`; save(); });
+      // An unscored scale rests at its middle, so a click there scores it too, not only a drag.
+      const set = () => { it.value = +r.value; r.classList.remove('unset'); out.textContent = `${it.value} out of ${max}`; save(); };
+      r.addEventListener('input', set); r.addEventListener('click', () => { if (it.value == null) set(); });
       return h('div', { class: 'it-scale' }, h('span', { class: 'hint' }, String(min)), r, h('span', { class: 'hint' }, String(max)), out);
     }
     if (t === 'vitals') {
@@ -5415,8 +5470,8 @@ Psychiatrist`;
     return h('section', { class: 'it is-' + (it.type || 'note') }, head || tools ? h('div', { class: 'it-h' }, head, tools) : null, body);
   }
   // Taking a part out asks first, since what was written in it goes with it.
-  function askRemove(label, fn) {
-    openDialog('Remove this part?', h('p', null, `“${label}” comes out of this entry, along with anything written in it.`), [btn('Cancel', closeDialog), btn('Remove', () => { closeDialog(); fn(); }, 'danger')]);
+  function askRemove(label, fn, inTemplate) {
+    openDialog('Remove this part?', h('p', null, inTemplate ? `“${label}” comes out of this template. Entries already made from it keep it.` : `“${label}” comes out of this entry, along with anything written in it.`), [btn('Cancel', closeDialog), btn('Remove', () => { closeDialog(); fn(); }, 'danger')]);
   }
   function itemsEdit(list, save, key) {
     return list.map((it, i) => {
@@ -5459,13 +5514,13 @@ Psychiatrist`;
     return h('div', { class: 'ce-body' },
       e.items.length ? itemsEdit(e.items, save, key) : h('p', { class: 'empty small' }, 'This entry is empty. Add an item below.'),
       apptLine(e.apptId && S.appts.find(a => a.id === e.apptId)),
-      entryBar(e, { add, gear: [['Copy as text', () => copyText(e.items.map(itemText).filter(Boolean).join('\n'))], ['Delete this draft', () => askDelete(p, e), true]], close, signBtn, hint: role === 'doctor' ? 'Signing locks the entry.' : 'Only Dr. Lee can sign entries.' }));
+      entryBar(e, { add, gear: [['Copy as text', () => copyText(e.items.map(itemText).filter(Boolean).join('\n'))], ['Delete this draft', () => askDelete(p, e), true]], close, signBtn, hint: role === 'doctor' ? 'Signing locks the entry.' : `Only ${CLINIC.doctor} can sign entries.` }));
   }
   function entryRead(p, e) {
     const blocks = e.items.map(it => { if (it.type === 'heading') return itemBlock(it, null); const body = itemRead(it); return body ? itemBlock(it, body) : null; }).filter(Boolean);
     return h('div', { class: 'ce-body' }, blocks.length ? blocks : h('p', { class: 'empty small' }, 'Nothing was filled in.'),
       apptLine(e.apptId && S.appts.find(a => a.id === e.apptId)),
-      h('p', { class: 'hint' }, e.status === 'signed' ? sentence(`Signed by ${e.by} ${whenIn(e.signedAt)}`) : 'Draft. Only Dr. Lee can fill it in and sign it.'));
+      h('p', { class: 'hint' }, e.status === 'signed' ? sentence(`Signed by ${e.by} ${whenIn(e.signedAt)}`) : `Draft. Only ${CLINIC.doctor} can fill it in and sign it.`));
   }
 
   /* a visit's note: the visit is recorded inside its entry, then the AI writes the note into its parts */
@@ -5530,7 +5585,7 @@ Psychiatrist`;
         v.note.summary ? btn('Send summary to patient', () => openSummarySend(p, v), 'small') : null,
         role === 'doctor' ? btn('New prescription', () => openRx(p), 'small') : null) : null,
       apptLine(apptOfVisit(v)),
-      h('p', { class: 'hint' }, signed ? sentence(`Signed by ${CLINIC.doctor} ${whenIn(v.signedAt)}`) + (v.audioDeleted ? ' The recording was deleted.' : '') + ' MSP billing is not connected in this prototype.' : 'Draft. Only Dr. Lee can write and sign the note.'));
+      h('p', { class: 'hint' }, signed ? sentence(`Signed by ${CLINIC.doctor} ${whenIn(v.signedAt)}`) + (v.audioDeleted ? ' The recording was deleted.' : '') + ' MSP billing is not connected in this prototype.' : `Draft. Only ${CLINIC.doctor} can write and sign the note.`));
   }
 
   /* drawing: a body diagram or a blank page to pin numbered notes to and draw on */
@@ -5564,6 +5619,7 @@ Psychiatrist`;
     svg.append(art, ink, pinsG);
     const notes = h('ol', { class: 'pad-notes' });
     const st = { tool: o.kind === 'body' ? 'pin' : 'pen', w: 0, c: 'ink' }, undo = [], redo = [];
+    let typing = false; // a mark's note being typed is one step for Undo
     const snap = () => JSON.stringify({ strokes: val.strokes, pins: val.pins });
     const keep = () => { undo.push(snap()); if (undo.length > 60) undo.shift(); redo.length = 0; };
     const restore = s => { const x = JSON.parse(s); val.strokes = x.strokes; val.pins = x.pins; };
@@ -5576,17 +5632,18 @@ Psychiatrist`;
       val.pins.forEach((q, i) => { const g = document.createElementNS(ns, 'g'); g.setAttribute('transform', `translate(${q.x},${q.y})`); g.innerHTML = `<circle r="11"/><text dy="4">${i + 1}</text>`; pinsG.append(g); });
       if (!o.pins) return;
       // The pins' notes, numbered to match.
-      notes.textContent = '';
+      notes.textContent = ''; typing = false;
       val.pins.forEach((q, i) => {
         const num = h('span', { class: 'pad-num', 'aria-hidden': 'true' }, String(i + 1));
         if (!o.edit) { notes.append(h('li', null, num, h('span', null, q.note || 'Marked, no note.'))); return; }
-        const b = noteBox(`${o.id}-pin-${i}`, q.note || '', 'What’s here', x => { q.note = x; saved(); }, { attrs: { 'aria-label': `Note for mark ${i + 1}` } });
+        const b = noteBox(`${o.id}-pin-${i}`, q.note || '', 'What’s here', x => { if (!typing) { keep(); typing = true; } q.note = x; saved(); }, { attrs: { 'aria-label': `Note for mark ${i + 1}` } });
+        b.ta.addEventListener('blur', () => { typing = false; });
         notes.append(h('li', null, num, b.box, h('button', { class: 'nf-x', type: 'button', 'aria-label': `Remove mark ${i + 1}`, onclick: () => { keep(); val.pins.splice(i, 1); paint(); saved(); } }, '×')));
       });
       notes.hidden = !val.pins.length;
     }
     drawArt(); paint();
-    if (!o.edit) { wrap.append(h('div', { class: 'pad-canvas' }, svg), o.pins ? notes : null); return wrap; }
+    if (!o.edit) { wrap.append(...[h('div', { class: 'pad-canvas' }, svg), o.pins ? notes : null].filter(Boolean)); return wrap; }
     // Tools down the side, the way drawing apps have them.
     const tools = h('div', { class: 'pad-tools', role: 'toolbar', 'aria-label': 'Drawing tools' });
     const tb = (label, kid, fn, on) => h('button', { type: 'button', class: 'pad-tool', title: label, 'aria-label': label, 'aria-pressed': on == null ? null : String(on), onclick: fn }, kid);
@@ -5633,7 +5690,7 @@ Psychiatrist`;
       const pickImg = moreMenu(Object.entries(PAD_IMAGES).filter(([k]) => k !== 'sign').map(([k, im]) => [(val.image === k ? '✓ ' : '') + im.name, () => { val.image = k; drawArt(); saved(); }]), [svgEl(CH_ICON.image, 'ico'), 'Change image'], 'btn-small');
       return h('div', { class: 'pad-under' }, pickImg, h('label', { class: 'pad-size' }, 'Image size', size), h('span', { class: 'hint' }, o.pins ? 'Pick the pin, then click the diagram to add a numbered note.' : ''));
     })();
-    wrap.append(h('div', { class: 'pad-main' }, tools, h('div', { class: 'pad-canvas' }, svg)), under, o.pins ? notes : null);
+    wrap.append(...[h('div', { class: 'pad-main' }, tools, h('div', { class: 'pad-canvas' }, svg)), under, o.pins ? notes : null].filter(Boolean));
     return wrap;
   }
 
@@ -5670,7 +5727,7 @@ Psychiatrist`;
     if (it.type === 'scale') { lo = inputEl('is-min', it.min, { type: 'number' }); hi = inputEl('is-max', it.max, { type: 'number' }); parts.push(h('div', { class: 'form-grid c2' }, field('Lowest', lo), field('Highest', hi))); }
     if (it.type === 'body') { img = selectEl('is-img', Object.entries(PAD_IMAGES).filter(([k]) => k !== 'sign').map(([k, im]) => [k, im.name]), it.image || 'body'); parts.push(field('Image', img)); }
     openDialog(ITEM_TYPES[it.type][0], h('div', { class: 'form' }, parts), [btn('Cancel', closeDialog), btn('Done', () => {
-      const l = label.value.trim(); if (!l) { label.focus(); return; }
+      const l = label.value.trim(); if (!l) { label.focus(); toast(words ? `Write the ${it.type} first.` : 'Give it a label.'); return; }
       if (choices) {
         const list = [...new Set(choices.value.split('\n').map(s => s.trim()).filter(Boolean))];
         if (!list.length) { choices.focus(); toast('Add at least one choice.'); return; }
@@ -5707,7 +5764,7 @@ Psychiatrist`;
 
   /* Templates, under the name menu, like a practitioner's own templates in Jane */
   VIEWS.templates = function () {
-    if (ui.tplDraft) return templateBuilder(ui.tplDraft);
+    if (ui.tplDraft && role === 'doctor') return templateBuilder(ui.tplDraft);
     const pg = h('div', { class: 'page' }), surveys = ui.tplTab === 'surveys';
     pg.append(pageHead(CLINIC.doctor, 'Psychiatrist · the templates chart entries are made from', [btn([svgEl(CH_ICON.book, 'ico'), 'Template library'], () => openLibrary()), role === 'doctor' ? btn([svgEl(CH_ICON.plus, 'ico'), 'New template'], () => editTemplate(null), 'primary') : null]));
     pg.append(h('div', { class: 'seg', role: 'group', 'aria-label': 'Kind of template' }, [['charts', 'Chart templates'], ['surveys', 'Surveys']].map(([k, l]) => h('button', { type: 'button', 'aria-pressed': String((surveys ? 'surveys' : 'charts') === k), onclick: () => { ui.tplTab = k; render(); } }, l))));
@@ -5758,14 +5815,22 @@ Psychiatrist`;
       ui.tplDraft = null; render();
     };
     const redraw = () => { renderKeepScroll = true; render(); };
+    // Duplicate copies the template as saved. Changes not saved yet are saved first, or left out, as the doctor chooses.
+    const dup = () => {
+      const was = S.templates.find(x => x.id === t.id);
+      if (!was || JSON.stringify(was) === JSON.stringify(t)) { duplicateTemplate(was || t); return; }
+      openDialog('Save your changes first?', h('p', null, `“${was.name}” has changes that aren’t saved. Save them before making the copy?`), [btn('Cancel', closeDialog),
+        btn('Don’t save', () => { closeDialog(); duplicateTemplate(was); }),
+        btn('Save', () => { closeDialog(); const i = S.templates.findIndex(x => x.id === t.id); S.templates[i] = t; persist(); toast(`${t.name} saved.`); duplicateTemplate(t); }, 'primary')]);
+    };
     pg.append(h('div', { class: 'page-head' },
       h('div', { class: 'title-block' }, h('p', { class: 'subtitle' }, `${CLINIC.doctor} · Templates`), h('div', { class: 'tp-name' }, h('h1', null, t.name), btn(svgEl(ACT.edit[1], 'ico'), () => openRename(t, redraw), 'quiet small icon', { 'aria-label': 'Rename the template', title: 'Rename' }))),
-      h('div', { class: 'head-actions' }, btn('Duplicate', () => duplicateTemplate(t)), btn('Cancel', () => finish(false)), btn('Save', () => finish(true), 'primary'))));
+      h('div', { class: 'head-actions' }, t.isNew ? null : btn('Duplicate', dup), btn('Cancel', () => finish(false)), btn('Save', () => finish(true), 'primary'))));
     const blocks = t.items.map((it, i) => {
       const acts = [actBtn('edit', () => openItemSettings(it, redraw), it.label),
         i ? actBtn('up', () => { t.items.splice(i - 1, 0, t.items.splice(i, 1)[0]); redraw(); }, it.label) : null,
         i < t.items.length - 1 ? actBtn('down', () => { t.items.splice(i + 1, 0, t.items.splice(i, 1)[0]); redraw(); }, it.label) : null,
-        actBtn('remove', () => askRemove(it.label, () => { t.items.splice(i, 1); redraw(); }), it.label)].filter(Boolean);
+        actBtn('remove', () => askRemove(it.label, () => { t.items.splice(i, 1); redraw(); }, true), it.label)].filter(Boolean);
       // How it will look in an entry, without keeping anything typed into it.
       const body = itemEdit(JSON.parse(JSON.stringify(it)), () => {}, 'tpl');
       return itemBlock(it, body ? h('div', { class: 'it-design', inert: '' }, body) : null, acts);
@@ -5993,6 +6058,7 @@ Psychiatrist`;
   // The name menu at the top right, as in Jane: who the clinic is viewed as, Claude, starting over and signing out.
   function syncAcct() {
     $('acctName').textContent = role === 'doctor' ? CLINIC.doctor : 'Sam (admin)';
+    $('acctMenu').querySelector('[data-role="doctor"]').textContent = CLINIC.doctor + ', psychiatrist';
     $('acctMenu').querySelectorAll('[data-role]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.role === role)));
   }
   function setRole(r) { role = r === 'admin' ? 'admin' : 'doctor'; try { localStorage.setItem(KEY + ':role', role); } catch (e) { /* per-viewer convenience only */ } syncAcct(); render(); toast(`Now viewing as ${roleName()}.`); }
@@ -6073,6 +6139,8 @@ Psychiatrist`;
     // Clinics saved before chart entries and templates came in get them now.
     if (!S.entries) S.entries = [];
     if (!S.templates) S.templates = starterTemplates();
+    // Templates and entries made before the testing version had its own doctor's name carry the demo's.
+    if (CLINIC.doctor !== 'Dr. Lee') S.templates.concat(S.entries).forEach(x => { if (x.by === 'Dr. Lee') x.by = CLINIC.doctor; });
     S.faxes.forEach(finishFax);
     syncAcct();
     syncClaudeBtn();
