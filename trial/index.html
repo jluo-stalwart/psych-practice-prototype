@@ -5,6 +5,8 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="deepgram-keys" content="https://psych-prototype-soniox-keys.andrew-b0f.workers.dev/deepgram-key">
 <meta name="ai-server" content="https://psych-prototype-soniox-keys.andrew-b0f.workers.dev/ai">
+<meta name="intake-relay" content="https://psych-prototype-soniox-keys.andrew-b0f.workers.dev/intake">
+<meta name="intake-page" content="../intake/">
 <meta name="practice-trial" content="57499eeadb9ab9eade99fca3167e4e45c8ba33dad444c812f537445210690157">
 <meta name="practice-doctor" content="Dr. Tsang">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -935,6 +937,13 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
 .statusbar .bat{display:block;width:22px;height:11px;border:1.5px solid currentColor;border-radius:3.5px;position:relative;opacity:.9}
 .statusbar .bat::before{content:"";position:absolute;inset:1.5px;width:70%;background:currentColor;border-radius:1.5px}
 @media (max-width: 520px){.phone-overlay{padding:0}.phone-wrap{width:100%;max-height:none;gap:0}.phone-bar{padding:10px 16px;background:var(--chat-bar);color:var(--ink)}.phone-bar button{background:var(--fill-2);color:var(--accent-text)}.phone{border-width:0;border-radius:0;box-shadow:none}.statusbar{display:none}}
+/* The patient's own page (intake/): the intake alone, filling the screen, without the clinic or a phone frame. */
+html[data-patient] #shell{display:none}
+html[data-patient] body{background:var(--chat-bg)}
+html[data-patient] .phone-overlay{background:var(--chat-bg);padding:0}
+html[data-patient] .phone-wrap{width:min(720px,100%);max-height:none;gap:0}
+html[data-patient] .phone-bar,html[data-patient] .statusbar{display:none}
+html[data-patient] .phone{border:0;border-radius:0;box-shadow:none}
 .app{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
 .top{flex:0 0 auto;padding:4px 16px 10px;display:grid;gap:8px;background:var(--chat-bar);border-bottom:1px solid var(--line)}
 .top-row{display:grid;grid-template-columns:minmax(64px,auto) minmax(0,1fr) minmax(64px,auto);align-items:center;gap:6px}
@@ -2945,6 +2954,34 @@ Psychiatrist`;
     try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => toast('Copied'), show); else show(); } catch (e) { show(); }
   }
 
+  /* ---------- the intake link: a patient's answers come back through the key server ---------- */
+  // Pages built with --intake-relay make real intake links to the patient's page (intake-page, relative to this page).
+  // A link carries a key that's only in the link and in this browser; the greeting and the answers travel sealed with
+  // it, so the key server holds nothing it can read, and deletes it once the clinic has it, or after a week.
+  const metaOf = n => ((document.querySelector(`meta[name="${n}"]`) || {}).content || '').trim();
+  const INTAKE_RELAY = metaOf('intake-relay').replace(/\/+$/, ''), INTAKE_PAGE = metaOf('intake-page') || 'intake/';
+  const patientPage = document.documentElement.hasAttribute('data-patient');
+  const toB64u = bytes => { let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+  const fromB64u = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+  const randHex = n => [...crypto.getRandomValues(new Uint8Array(n))].map(b => b.toString(16).padStart(2, '0')).join('');
+  const sha256Hex = async s => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)))].map(b => b.toString(16).padStart(2, '0')).join('');
+  async function seal(keyB64, obj) {
+    const key = await crypto.subtle.importKey('raw', fromB64u(keyB64), 'AES-GCM', false, ['encrypt']), iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(JSON.stringify(obj))));
+    const out = new Uint8Array(iv.length + ct.length); out.set(iv); out.set(ct, iv.length);
+    return toB64u(out);
+  }
+  async function unseal(keyB64, sealed) {
+    const key = await crypto.subtle.importKey('raw', fromB64u(keyB64), 'AES-GCM', false, ['decrypt']), all = fromB64u(sealed);
+    return JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: all.subarray(0, 12) }, key, all.subarray(12))));
+  }
+  async function relay(path, body) {
+    const res = await fetch(`${INTAKE_RELAY}/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    let data = {};
+    try { data = (await res.json()) || {}; } catch (e) { /* no answer body */ }
+    return { status: res.status, data };
+  }
+
   /* ---------- AI: writes notes and letters, on claude.ai with the viewer's own Claude account ---------- */
   let sampleFn = null, aiCtl = null;
   let sampleState = window.claude && typeof window.claude.use === 'function' ? 'checking' : 'off';
@@ -4202,8 +4239,10 @@ Psychiatrist`;
   /* intake tab: the intake prototype's doctor's view */
   function tabIntake(p) {
     const it = p.intake, wrap = h('div', { class: 'stack gap-l' });
-    const sum = { none: 'Not sent yet.', sent: `Link sent ${whenIn(it.sentAt)}; not started.`, progress: sentence(`${Object.keys(it.A || {}).length} answers so far, the last ${whenIn(it.lastAt || Date.now())}`), done: sentence(`Finished ${whenIn(it.completedAt)}`) }[it.status];
+    const waiting = INTAKE_RELAY && it.relay && it.status !== 'done';
+    const sum = { none: 'Not sent yet.', sent: waiting ? sentence(`Link sent ${whenIn(it.sentAt || it.relay.at)}`) + ' Their answers show here when they finish.' : `Link sent ${whenIn(it.sentAt)}; not started.`, progress: sentence(`${Object.keys(it.A || {}).length} answers so far, the last ${whenIn(it.lastAt || Date.now())}`), done: sentence(`Finished ${whenIn(it.completedAt)}`) }[it.status];
     wrap.append(h('div', { class: 'bar-line' }, intakeChip(p), h('span', { class: 'hint grow' }, sum),
+      waiting ? btn('Check now', () => checkIntakes(true), 'small') : null,
       ['none', 'sent', 'progress'].includes(it.status) ? btn(it.status === 'none' ? 'Send intake link' : 'Send link again', () => openIntakeLink(p), 'small') : null,
       btn('Preview as patient', () => openPatientView(p.id), 'small')));
     if (it.status === 'done' && it.A) {
@@ -4865,9 +4904,12 @@ Psychiatrist`;
         if (a) { a.start = slot; a.type = typeSel.value; a.mode = modeSel.value; a.mins = TYPES[a.type].mins; const v = S.visits.find(x => x.id === a.visitId); if (v) Object.assign(v, { start: slot, type: a.type, mode: a.mode }); logEvent(p.id, `Appointment moved to ${fmtDay(slot)}, ${fmtTime(slot)}`); }
         else { a = { id: uid('a'), pid: p.id, start: slot, mins: TYPES[typeSel.value].mins, type: typeSel.value, mode: modeSel.value, status: 'booked', visitId: null, reminders: [] }; const v = newVisit(a); S.visits.push(v); a.visitId = v.id; S.appts.push(a); logEvent(p.id, `${TYPES[a.type].label} booked for ${fmtDay(slot)}, ${fmtTime(slot)} (${MODES[a.mode].toLowerCase()})`); doneTaskKey('book:' + p.id); S.waitlist = S.waitlist.filter(w => w.pid !== p.id); }
         a.reminders = rem.checked ? [[2 * DAY, 'Text, 2 days before'], [2 * HOUR, 'Text, 2 hours before']].map(([gap, label]) => ({ at: slot - gap, label, sent: false })) : [];
-        if (intake.checked && !intake.disabled) sendIntakeLink(p, 'text');
+        // With real intake links, booking opens the link to copy; otherwise the stand-in link counts as sent.
+        const linkNow = intake.checked && !intake.disabled;
+        if (linkNow && !INTAKE_RELAY) sendIntakeLink(p, 'text');
         if (ui.view === 'schedule') { ui.day = startOfDay(slot); ui.apptSel = a.id; }
         persist(); closeDialog(); toast(`${existing ? 'Moved' : 'Booked'}: ${p.name}, ${when(slot)}`); render();
+        if (linkNow && INTAKE_RELAY) openIntakeLink(p);
       }, 'primary')]);
   }
   function openAppt(a) {
@@ -4999,15 +5041,104 @@ Psychiatrist`;
   function sendIntakeLink(p, via) {
     if (p.intake.status !== 'done' && p.intake.status !== 'progress') p.intake.status = 'sent';
     p.intake.sentAt = Date.now();
-    logEvent(p.id, `Intake link sent by ${via === 'email' ? 'email' : 'text'}`);
+    logEvent(p.id, via === 'link' ? 'Intake link copied to send' : `Intake link sent by ${via === 'email' ? 'email' : 'text'}`);
   }
-  function openIntakeLink(p) {
-    const via = selectEl('il-via', [['text', `Text to ${p.phone}`], ['email', `Email to ${p.email || 'no email on file'}`]], 'text');
+  // The intake link. Where the page has a key server (the public pages) the link is real: the doctor copies the
+  // message and sends it, and the answers come back by themselves. Elsewhere the link stands in, and nothing is sent.
+  async function intakeLinkFor(p) {
+    const it = p.intake;
+    if (it.relay && Date.now() - it.relay.at < 6 * DAY) return it.relay;
+    const r = { id: randHex(16), key: toB64u(crypto.getRandomValues(new Uint8Array(16))), pickup: randHex(16), at: Date.now() };
     const a = nextAppt(p);
-    const msg = `Hi ${firstName(p)}, this is ${CLINIC.name}. Before your visit${a ? ' on ' + fmtDay(a.start) : ''}, please answer some questions here (about 25 minutes): https://intake.example/${p.id} . If you are in crisis, call 911 or call or text 9-8-8.`;
-    openDialog('Send intake link', h('div', { class: 'form' }, field('Send by', via), h('div', { class: 'stack' }, h('span', { class: 'fld-l' }, 'Message'), h('p', { class: 'infobox' }, msg)), h('p', { class: 'hint' }, 'Nothing is sent from this prototype.')), [
-      btn('Cancel', closeDialog),
-      btn('Send', () => { if (via.value === 'email' && !p.email) { toast('There is no email on file.'); return; } sendIntakeLink(p, via.value); persist(); closeDialog(); toast(`Intake link sent to ${p.name} (demo).`); render(); }, 'primary')]);
+    const info = await seal(r.key, { name: p.name, dob: p.dob || '', pronouns: p.pronouns || '', clinic: CLINIC.name, doctor: CLINIC.doctor, appt: a ? fmtDay(a.start) : '' });
+    const res = await relay('open', { id: r.id, pickup: await sha256Hex(r.pickup), info });
+    if (res.status !== 200) throw new Error(res.data.error || `http_${res.status}`);
+    it.relay = r; persist();
+    return r;
+  }
+  const intakeUrl = r => `${new URL(INTAKE_PAGE, location.href).href.split('#')[0]}#${r.id}.${r.key}`;
+  function openIntakeLink(p) {
+    const a = nextAppt(p);
+    const msg = url => `Hi ${firstName(p)}, this is ${CLINIC.name}. Before your visit${a ? ' on ' + fmtDay(a.start) : ''}, please answer some questions here (about 25 minutes): ${url} . If you are in crisis, call 911 or call or text 9-8-8.`;
+    if (!INTAKE_RELAY) {
+      const via = selectEl('il-via', [['text', `Text to ${p.phone}`], ['email', `Email to ${p.email || 'no email on file'}`]], 'text');
+      openDialog('Send intake link', h('div', { class: 'form' }, field('Send by', via), h('div', { class: 'stack' }, h('span', { class: 'fld-l' }, 'Message'), h('p', { class: 'infobox' }, msg(`https://intake.example/${p.id}`))), h('p', { class: 'hint' }, 'Nothing is sent from this prototype.')), [
+        btn('Cancel', closeDialog),
+        btn('Send', () => { if (via.value === 'email' && !p.email) { toast('There is no email on file.'); return; } sendIntakeLink(p, via.value); persist(); closeDialog(); toast(`Intake link sent to ${p.name} (demo).`); render(); }, 'primary')]);
+      return;
+    }
+    let url = '';
+    const box = h('p', { class: 'infobox' }, 'Making the link…'), err = h('p', { class: 'err', role: 'alert', hidden: true });
+    // Copying counts as sending: the prototype can't text or email, so the doctor sends it.
+    const copy = text => {
+      const sent = () => { sendIntakeLink(p, 'link'); persist(); render(); };
+      const fallback = () => { sent(); selectText(box); toast('Selected. Press Ctrl+C or Cmd+C to copy.'); };
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => { sent(); closeDialog(); toast(`Copied. Send it to ${firstName(p)}; their answers show in the Intake tab when they finish.`); }, fallback);
+        else fallback();
+      } catch (e) { fallback(); }
+    };
+    const copyLink = btn('Copy link', () => copy(url), null, { disabled: true }), copyMsg = btn('Copy message', () => copy(msg(url)), 'primary', { disabled: true });
+    openDialog('Send intake link', h('div', { class: 'form' }, h('div', { class: 'stack' }, h('span', { class: 'fld-l' }, 'Message'), box), err,
+      h('p', { class: 'hint' }, 'This prototype can’t send texts or emails, so copy the message and send it yourself, only to someone testing with made-up answers. Their answers come back to this clinic, in this browser, and the link works for a week.')), [btn('Cancel', closeDialog), copyLink, copyMsg]);
+    intakeLinkFor(p).then(r => { url = intakeUrl(r); box.textContent = msg(url); copyLink.disabled = false; copyMsg.disabled = false; }, e => {
+      box.textContent = msg('(no link yet)');
+      err.textContent = { rate_limited: 'Too many tries in a minute. Close this and try again shortly.', not_allowed: 'This page’s address can’t make intake links.' }[e.message] || 'The link couldn’t be made. Check the connection, then close this and try again.';
+      err.hidden = false;
+    });
+  }
+  // A finished intake, answered here or through a link: the review waits for the doctor, and safety answers put a call
+  // at the top of Today. Says whether any were flagged.
+  function completeIntake(p, doneAt) {
+    const it = p.intake;
+    it.status = 'done'; it.completedAt = doneAt || Date.now(); it.reviewedAt = null; p.safetyAck = null;
+    const u = flags(it.A).urgent;
+    logEvent(p.id, 'Finished the intake questionnaire' + (u.length ? '; safety answers flagged' : ''));
+    if (u.length) S.tasks.push({ id: uid('t'), title: `Call ${p.name} about the safety answers in their intake`, pid: p.id, who: 'admin', due: at(0, 17, 0), done: false, urgent: true, key: 'ack:' + p.id });
+    return u.length > 0;
+  }
+  // Answers from intake links come in by themselves: checked when the clinic opens, every minute while it's on screen,
+  // and with Check now. Once kept here, they're deleted from the key server.
+  let checkingIntakes = false, lastIntakeCheck = 0;
+  async function checkIntakes(manual) {
+    if (!INTAKE_RELAY || !S || checkingIntakes || (!manual && Date.now() - lastIntakeCheck < 20000)) return;
+    const mine = S.patients.filter(p => p.intake && p.intake.relay);
+    if (!mine.length) { if (manual) toast('No intake links are waiting for answers.'); return; }
+    checkingIntakes = true; lastIntakeCheck = Date.now();
+    const item = p => ({ id: p.intake.relay.id, pickup: p.intake.relay.pickup });
+    const sorry = () => { if (manual) toast('Couldn’t check for answers just now. Try again in a minute.'); };
+    try {
+      const waiting = mine.filter(p => p.intake.status !== 'done'), got = [];
+      if (waiting.length) {
+        const res = await relay('check', { items: waiting.map(item) });
+        if (res.status !== 200) { sorry(); return; }
+        const found = res.data.found || {}, gone = res.data.gone || [];
+        for (const p of waiting) {
+          const r = p.intake.relay;
+          if (found[r.id]) {
+            let d;
+            try { d = await unseal(r.key, found[r.id]); } catch (e) { continue; }
+            Object.assign(p.intake, { A: d.A || {}, T: d.T || {}, started: d.started || null });
+            got.push([p, completeIntake(p, d.completedAt)]);
+          } else if (gone.includes(r.id)) delete p.intake.relay; // expired; Send link again makes a new one
+        }
+        persist();
+      }
+      // Answers kept here, and links for intakes finished here some other way, are cleared from the key server.
+      const clear = mine.filter(p => p.intake.relay && p.intake.status === 'done');
+      if (clear.length && (await relay('done', { items: clear.map(item) })).status === 200) { clear.forEach(p => { delete p.intake.relay; }); persist(); }
+      if (got.length) {
+        const flagged = got.some(([, f]) => f);
+        toast(`${got.length === 1 ? `${got[0][0].name} finished the intake` : `${got.length} patients finished the intake`}.${flagged ? ' Safety answers were flagged; the call is at the top of Today.' : ''}`);
+        softRender();
+      } else if (manual) toast('No answers yet.');
+    } catch (e) { sorry(); } finally { checkingIntakes = false; }
+  }
+  function startIntakeChecks() {
+    if (!INTAKE_RELAY) return;
+    checkIntakes();
+    setInterval(() => { if (document.visibilityState === 'visible') checkIntakes(); }, 60000);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkIntakes(); });
   }
   function openSummarySend(p, v) {
     const via = selectEl('sum-via', [['text', `Text to ${p.phone}`], ['email', `Email to ${p.email || 'no email on file'}`]], p.reminders === 'email' ? 'email' : 'text');
@@ -5856,7 +5987,7 @@ Psychiatrist`;
     $('confirm').hidden = true; closeMenu(); $('phoneOverlay').hidden = false;
     renderAll(); setTimeout(() => $('phoneClose').focus(), 0);
   }
-  function closePatientView() { $('phoneOverlay').hidden = true; chatPid = null; softRender(); }
+  function closePatientView() { if (patientPage) return; $('phoneOverlay').hidden = true; chatPid = null; softRender(); }
   function saveChat() {
     if (!chatPid) return;
     const it = P(chatPid).intake;
@@ -5866,14 +5997,12 @@ Psychiatrist`;
     persist();
   }
   function finishIntake() {
+    if (patientPage) { sendAnswers(); return; }
     const p = P(chatPid), it = p.intake;
     if (it.status === 'done') return;
-    it.status = 'done'; it.completedAt = Date.now(); it.reviewedAt = null; p.safetyAck = null;
-    const u = flags(it.A).urgent;
-    logEvent(p.id, 'Finished the intake questionnaire' + (u.length ? '; safety answers flagged' : ''));
-    if (u.length) S.tasks.push({ id: uid('t'), title: `Call ${p.name} about the safety answers in their intake`, pid: p.id, who: 'admin', due: at(0, 17, 0), done: false, urgent: true, key: 'ack:' + p.id });
+    const flagged = completeIntake(p);
     persist();
-    if (u.length) toast(`${p.name}'s answers were flagged for safety. They're at the top of Today now.`);
+    if (flagged) toast(`${p.name}'s answers were flagged for safety. They're at the top of Today now.`);
   }
   let lastSection = null;
   function divider(n) { if (n.section !== lastSection) { lastSection = n.section; if (n.section !== 'Welcome') log.append(h('div', { class: 'divider' }, n.section)); } }
@@ -5925,7 +6054,7 @@ Psychiatrist`;
     curIndex = null; showEnd(); scrollDown(true); busy = false; progress(); finishIntake();
   }
   function back() {
-    if (busy) return;
+    if (busy || linkLocked()) return;
     let last = -1;
     Q.forEach((n, i) => { if (isQ(n) && (n.id in A) && visible(n, A)) last = i; });
     if (last < 0) return;
@@ -5941,7 +6070,7 @@ Psychiatrist`;
     $('bar').parentElement.setAttribute('aria-valuenow', String(pct));
     $('pct').textContent = finished ? 'Finished' : pct + '% done';
     $('left').textContent = finished ? '' : e.left < 45 ? 'Less than a minute left' : 'About ' + Math.round(e.left / 60) + ' min left';
-    $('backBtn').disabled = !Object.keys(A).length;
+    $('backBtn').disabled = !Object.keys(A).length || linkLocked();
   }
   function extras(n) {
     const row = h('div', { class: 'row' });
@@ -6017,13 +6146,14 @@ Psychiatrist`;
   }
   function showEnd() {
     comp.textContent = '';
+    if (patientPage) { comp.append(linkEnd()); return; }
     comp.append(h('p', { class: 'hint', role: 'status' }, 'Thank you. Your answers went to the clinic. In this demo they appear in the patient file.'),
       h('div', { class: 'row' }, h('button', { class: 'btn btn-primary', type: 'button', onclick: () => { const pid = chatPid; closePatientView(); openPatient(pid, 'intake'); } }, 'See it in the patient file'), h('button', { class: 'btn', type: 'button', onclick: askReset }, 'Start over')));
   }
   let confirmAction = null;
   function closeMenu() { $('menu').hidden = true; $('moreBtn').setAttribute('aria-expanded', 'false'); }
   function ask(text, yes, fn) { closeMenu(); $('confirmText').textContent = text; $('confirmYes').textContent = yes; confirmAction = fn; $('confirm').hidden = false; $('confirmYes').focus(); }
-  function askReset() { ask('Clear all the answers and start again?', 'Clear answers', reset); }
+  function askReset() { if (linkLocked()) { closeMenu(); return; } ask('Clear all the answers and start again?', 'Clear answers', reset); }
   function reset() { A = {}; T = {}; started = null; const it = P(chatPid).intake; if (it.status === 'done') { it.status = it.sentAt ? 'sent' : 'none'; it.completedAt = null; } saveChat(); $('confirm').hidden = true; renderAll(); }
   // Testing shortcut: a made-up patient answers everything, keeping this patient's own name, birth date and pronouns.
   // The story suits the patient: the anxious professional or new parent for she/her, the bereaved retiree for older men, the student for everyone else.
@@ -6037,9 +6167,10 @@ Psychiatrist`;
     if (['she', 'he', 'they'].includes(p.pronouns)) Object.assign(over, { pronouns: p.pronouns, gender: { she: 'woman', he: 'man', they: 'nonbinary' }[p.pronouns] });
     const r = testPatient(personaFor(p), over);
     A = r.a; T = r.t; started = r.start; saveChat(); renderAll(); finishIntake();
+    if (patientPage) return;
     const pid = chatPid; closePatientView(); openPatient(pid, 'intake', { intakeTab: 'ai' });
   }
-  function askFill() { if (Object.keys(A).some(k => k !== 'start')) ask('Replace these answers with a random test patient?', 'Replace answers', fillTestPatient); else { closeMenu(); fillTestPatient(); } }
+  function askFill() { if (linkLocked()) { closeMenu(); return; } if (Object.keys(A).some(k => k !== 'start')) ask('Replace these answers with a random test patient?', 'Replace answers', fillTestPatient); else { closeMenu(); fillTestPatient(); } }
   $('backBtn').addEventListener('click', back);
   $('moreBtn').addEventListener('click', ev => { ev.stopPropagation(); const open = $('menu').hidden; $('menu').hidden = !open; $('moreBtn').setAttribute('aria-expanded', String(open)); });
   document.addEventListener('click', ev => { if (!$('menu').hidden && !ev.target.closest('.menu-wrap')) closeMenu(); });
@@ -6048,6 +6179,60 @@ Psychiatrist`;
   $('confirmYes').addEventListener('click', () => { const fn = confirmAction; confirmAction = null; $('confirm').hidden = true; if (fn) fn(); });
   $('confirmNo').addEventListener('click', () => { $('confirm').hidden = true; });
   $('phoneClose').addEventListener('click', closePatientView);
+
+  /* ---------- the patient's own page (intake/): the intake from a link ---------- */
+  // The link ends #<id>.<key>. The page opens the clinic's sealed greeting with the key, asks the questions here, keeping
+  // the answers in this browser as it goes so the patient can stop and come back, and sends them sealed once, at the end.
+  let link = null, linkState = '', linkInfo = {};
+  const linkLocked = () => patientPage && (linkState === 'sending' || linkState === 'sent');
+  function linkEnd() {
+    const line = t => h('p', { class: 'hint', role: 'status' }, t), clinic = linkInfo.clinic || 'the clinic';
+    if (linkState === 'sent') return line(`Thank you. Your answers were sent to ${clinic}. You can close this page.`);
+    if (linkState === 'expired') return line(`This link has expired, so your answers couldn’t be sent. Please ask ${clinic} for a new link.`);
+    if (linkState === 'failed') return h('div', { class: 'stack' }, line('Your answers couldn’t be sent. They’re saved on this device; check the connection and try again.'), h('div', { class: 'row' }, h('button', { class: 'btn btn-primary', type: 'button', onclick: sendAnswers }, 'Try again')));
+    return line('Sending your answers…');
+  }
+  async function sendAnswers() {
+    if (!link || linkLocked()) return;
+    linkState = 'sending'; showEnd(); progress();
+    try {
+      const res = await relay('send', { id: link.id, answers: await seal(link.key, { A, T, started, completedAt: Date.now() }) });
+      linkState = res.status === 200 || res.data.error === 'already_sent' ? 'sent' : res.status === 404 ? 'expired' : 'failed';
+    } catch (e) { linkState = 'failed'; }
+    if (linkState === 'sent') { const it = P(chatPid).intake; it.status = 'done'; it.completedAt = Date.now(); S.sent = true; persist(); $('moreBtn').hidden = true; }
+    showEnd(); progress();
+  }
+  async function startPatientPage() {
+    const m = (location.hash || '').match(/^#([0-9a-f]{32})\.([A-Za-z0-9_-]{22})$/);
+    const say = t => { $('phoneOverlay').hidden = false; log.textContent = ''; comp.textContent = ''; comp.append(h('p', { class: 'hint', role: 'status' }, t)); $('moreBtn').hidden = true; };
+    if (!m || !INTAKE_RELAY || !(window.crypto && crypto.subtle)) { say('This link isn’t complete. Please open the whole link from the clinic’s message.'); return; }
+    link = { id: m[1], key: m[2] };
+    KEY = 'psych-intake-patient-v1:' + link.id;
+    // Answers already sent from this browser need nothing from the server.
+    let kept = null;
+    try { kept = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { kept = null; }
+    if (kept && kept.sent) { linkState = 'sent'; say(`Your answers were already sent to ${(kept.info && kept.info.clinic) || 'the clinic'}. Thank you.`); return; }
+    say('Opening your questions…');
+    // A link made a moment ago can take up to a minute to reach every server, so a "not found" is tried again.
+    let res = { status: 0, data: {} };
+    for (let i = 0; i < 7; i++) {
+      try { res = await relay('info', { id: link.id }); } catch (e) { res = { status: 0, data: {} }; }
+      if (res.status === 200 || res.status === 400 || res.status === 403) break;
+      if (i === 0) say('Still opening your questions. A new link can take up to a minute to work.');
+      await sleep(10000);
+    }
+    if (res.status === 404) { say('This link has expired or was already used. Please ask the clinic for a new one.'); return; }
+    if (res.status !== 200) { say('Your questions couldn’t be opened. Check the connection and reload this page.'); return; }
+    try { linkInfo = await unseal(link.key, res.data.info); } catch (e) { say('This link isn’t complete. Please open the whole link from the clinic’s message.'); return; }
+    if (res.data.sent) { linkState = 'sent'; say(`Your answers were already sent to ${linkInfo.clinic}. Thank you.`); return; }
+    S = kept && kept.patients ? kept : { v: 1, patients: [{ id: 'me', name: linkInfo.name || 'Patient', dob: linkInfo.dob || '', pronouns: linkInfo.pronouns || '', intake: { status: 'sent', A: {} } }], appts: [], visits: [], tasks: [], events: [] };
+    S.info = { clinic: linkInfo.clinic };
+    document.querySelector('#chatView .brand-p p').textContent = linkInfo.appt ? `${linkInfo.clinic} · visit on ${linkInfo.appt}` : linkInfo.clinic;
+    document.title = `Before your visit · ${linkInfo.clinic}`;
+    $('moreBtn').hidden = false;
+    openPatientView('me');
+    if (curIndex == null) { if (S.sent) { linkState = 'sent'; $('moreBtn').hidden = true; showEnd(); progress(); } else sendAnswers(); }
+  }
 
   /* ---------- wiring ---------- */
   document.addEventListener('keydown', ev => {
@@ -6150,8 +6335,10 @@ Psychiatrist`;
       window.claude.use('sample').then(fn => { sampleFn = fn || null; sampleState = fn ? 'ready' : 'off'; softRender(); }, () => { sampleFn = null; sampleState = 'off'; softRender(); });
     }
     routeFromHash();
+    startIntakeChecks();
   }
-  if (!trial) boot();
+  if (patientPage) startPatientPage();
+  else if (!trial) boot();
   else if (signedInAccount()) enterTrial(signedInAccount());
   else showSignIn();
 })();
