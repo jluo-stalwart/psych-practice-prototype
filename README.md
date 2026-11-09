@@ -12,4 +12,4 @@ In Chrome, Edge or Safari, the record button records from your microphone and tu
 
 A testing version for invited testers is at https://jluo-stalwart.github.io/psych-practice-prototype/trial/. It opens on a sign-in, and each test account gets its own clinic that starts empty and keeps the tester's work in their browser.
 
-`index.html` is the whole prototype, and `trial/index.html` is the testing version. Both are built from separate source files kept elsewhere, so change those rather than these files.
+`index.html` is the prototype, `trial/index.html` is the testing version and `intake/index.html` is the patient's page that an intake link opens. `assets/` holds the code and styles the three share. They're built from separate source files kept elsewhere, so change those rather than these files.
