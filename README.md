@@ -4,7 +4,7 @@ A clickable prototype of a psychiatry practice system: Schedule, Day, Patients, 
 
 Open it at https://jluo-stalwart.github.io/psych-practice-prototype/
 
-Everything in it is made up: the clinic, the patients and the visits, so enter made-up details only. Each visitor's changes stay in their own browser, and "Reset demo" in the name menu at the top right puts everything back. What you enter leaves your browser only when you use the AI, record a visit or send an intake link, as described below. Loading the page also fetches its font from Google Fonts.
+Everything in it is made up: the clinic, the patients and the visits, so enter made-up details only. Each visitor's changes to the demo stay in their own browser, and "Reset demo" in the name menu at the top right puts everything back. What you enter leaves your browser only when you use the AI, record a visit or send an intake link, or, in the testing version, as its clinic is saved online, as described below. Loading the page also fetches its font from Google Fonts.
 
 The AI buttons are free to use. They send what the AI needs, such as the transcript, the note or the intake answers, to this prototype's small server on Cloudflare, and Cloudflare's AI (the open model gpt-oss-120b) writes the result. The server keeps a daily count of how much AI was used, not what was sent. The free allowance is limited each day; once it's used up, the page says when it starts again (midnight UTC).
 
@@ -12,6 +12,6 @@ The record button records from your microphone, and Deepgram, a speech-to-text s
 
 Sending an intake link, from a patient's Intake tab or when booking a consult, makes a real link to the patient's page, https://jluo-stalwart.github.io/psych-practice-prototype/intake/, for the clinic to copy into a text or email; the prototype doesn't send them itself. The patient's answers are sealed with a key that's only in the link, so the server can't read them. They wait on the server until the clinic's page picks them up, and are deleted then or after 7 days. The demo clinic starts afresh each day, so answer a link from the demo on the day it was sent.
 
-A testing version for invited testers is at https://jluo-stalwart.github.io/psych-practice-prototype/trial/. It opens on a sign-in, and each test account gets its own clinic that starts empty and keeps the tester's work in their browser.
+A testing version for invited testers is at https://jluo-stalwart.github.io/psych-practice-prototype/trial/. It opens on a sign-in, and each test account gets its own clinic that starts empty. The clinic is saved online, so it opens on each device the tester signs in on, and an intake link's answers can be picked up on any of them. Before the clinic leaves the browser, it's sealed with a key made on the device from the account's email and password, so the prototype's server, and Cloudflare, hold only sealed text. Signing out clears the browser's copy once everything is saved online.
 
 `index.html` is the prototype, `trial/index.html` is the testing version and `intake/index.html` is the patient's page that an intake link opens. `assets/` holds the code and styles the three share. They're built from separate source files kept elsewhere, so change those rather than these files.
